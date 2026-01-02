@@ -8,10 +8,12 @@ public class TestEquationParser
 {
     const string equationInput = "x - 2y + 3z = 4;5x - 6y + z = 8;9x + y + 11.5z =-  12.5;";
     const string matrixInput = "1.3 -2 3 4;5 -6 7 8;9 10 11.5 -12.5;";
+    private Solver _solver;
 
     [SetUp]
     public void Setup()
     {
+        _solver = new Solver();
         //_parser = new Parser(equationInput);
     }
 
@@ -29,7 +31,7 @@ public class TestEquationParser
         // var actualMatrix = _parser.MatrixConversion();
         Matrix<double> actualMatrix = null;
 
-        Assert.AreEqual(expectedMatrix, actualMatrix);
+        Assert.That(actualMatrix, Is.EqualTo(expectedMatrix));
     }
 
     [Test]
@@ -43,7 +45,7 @@ public class TestEquationParser
         // var actualVector = _parser.VectorConversion();
         Vector<double> actualVector = null;
 
-        Assert.AreEqual(expectedVector, actualVector);
+        Assert.That(actualVector, Is.EqualTo(expectedVector));
     }
 
     [Test]
@@ -59,7 +61,7 @@ public class TestEquationParser
         // var actual = new Parser(equationInput);
         Matrix<double> actual = null;
 
-        Assert.AreEqual(expected, actual);
+        Assert.That(actual, Is.EqualTo(expected));
     }
 
     [Test]
@@ -67,9 +69,9 @@ public class TestEquationParser
     {
         var eq = "-X+2y +3z - 4t = 7;3x - 2y-z+t = 8;9x +12y - 3z + 4t = 5;6x -7y +2z -9t = 18;";
         var expected = "string";
-        var solver = new Solver(eq);
-        //string actual = new Solver(eq);
+        var solver = _solver.Solve(eq);
+        //string actual = _solver.Solve(eq);
         var parser = new Parser(eq);
-        Assert.AreEqual(expected, parser.MatrixConversion(eq.GetUnknownVariables()).ToString());
+        Assert.That(parser.MatrixConversion(eq.GetUnknownVariables()).ToString(), Is.EqualTo(expected));
     }
 }

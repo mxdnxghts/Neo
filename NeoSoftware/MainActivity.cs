@@ -13,6 +13,9 @@ using AndroidX.AppCompat.App;
 using AndroidX.Core.App;
 using AndroidX.Core.Content;
 using Java.Lang;
+using Neo.Services;
+using Neo.Storage;
+using Neo.Constants;
 using StringBuilder = System.Text.StringBuilder;
 using static Android.Gms.Vision.Detector;
 using AlertDialog = AndroidX.AppCompat.App.AlertDialog;
@@ -24,6 +27,8 @@ namespace NeoSoftware
     [Activity(Label = "Neo", Theme = "@style/AppTheme", MainLauncher = true)]
     public partial class MainActivity : AppCompatActivity, ISurfaceHolderCallback, IProcessor
     {
+        private Solver _solver;
+        private StorageHandler _storage;
         private SurfaceView _cameraView;
         private TextView _tessOutput;
         private CameraSource _cameraSource;
@@ -46,6 +51,8 @@ namespace NeoSoftware
             _isLoadMain = true;
 
             BuildUi();
+            _storage = new StorageHandler(ConnectionStringConstant.NpgsqlConnectionString);
+            _solver = new Solver(_storage);
         }
 
         /// <summary>

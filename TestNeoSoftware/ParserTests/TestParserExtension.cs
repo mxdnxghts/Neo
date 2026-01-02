@@ -27,16 +27,16 @@ public class TestParserExtension
         // var actualMatrix = _parser.MatrixConversion();
         Matrix<double> actual = null;
 
-        Assert.AreEqual(expected, actual);
+        Assert.That(actual, Is.EqualTo(expected));
     }
 
     [Test]
     public void TestSolverOnUnit()
     {
         var expected = "x: -1.3333333333333333\r\ny: -2.416666666666667\r\nz: 0.1666666666666667\r\n";
-        string actual = new Solver(equationInput);
+        string actual = new Solver().Solve(equationInput);
 
-        Assert.AreEqual(expected, actual);
+        Assert.That(actual, Is.EqualTo(expected));
     }
 
     [Test]
@@ -46,6 +46,6 @@ public class TestParserExtension
         // var actual = equationInput.OnZeroVariable();
         var actual = string.Empty;
 
-        Assert.AreEqual(expected, actual);
+        Assert.That(actual, Is.EqualTo(expected));
     }
 }

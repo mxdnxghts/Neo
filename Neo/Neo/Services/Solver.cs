@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Text;
+using System.Threading.Tasks;
 using MathNet.Numerics.LinearAlgebra;
+using Neo.Storage;
 using Neo.Utilities;
 
 namespace Neo.Services;
@@ -10,6 +12,7 @@ namespace Neo.Services;
 /// </summary>
 public sealed class Solver
 {
+    private readonly StorageHandler _storage;
     /// <summary>
     /// passed recognized string (expected system linear equations)
     /// </summary>
@@ -39,73 +42,22 @@ public sealed class Solver
     public static implicit operator Vector<double>(Solver solver) => solver.Result;
 
     /// <summary>
-    /// explicitly converts passed <see cref="_input"/> to <see cref="Solver"/>
-    /// </summary>
-    /// <param name="input"></param>
-    /// <returns>instance of <see cref="Solver"/></returns>
-    public static explicit operator Solver(string input) => new(input);
-
-    /// <summary>
     /// returns instance of <see cref="Solver"/> with different implicit and explicit operators
     /// </summary>
     public Solver()
     {
     }
 
-    /// <summary>
-    /// returns instance of <see cref="Solver"/> with different implicit and explicit operators
-    /// </summary>
-    /// <param name="input"><see cref="_input"/></param>
-    public Solver(string input)
+    public Solver(StorageHandler storage)
     {
-        _constantInput = input;
-        _input = input.Replace("\n", Parser.SplitSymbol.ToString()).ToLower();
-        _input = _input.AppendZeroCoefficients(input.GetUnknownVariables()).RemoveWhiteSpacesNearSeparator();
-
-        if (_input is "no text" or "" || _input.IsTrash())
-        {
-            Error.Message = "didn't read anything.";
-            Error.ArgValues = input;
-            return;
-        }
-
-
-        _parser = new Parser(_input);
-        try
-        {
-            Solve(_input.GetUnknownVariables());
-        }
-        catch (Exception exception)
-        {
-            Error.Message = exception.Message;
-            Error.InnerMessage = exception.InnerException?.Message;
-        }
-    }
-
-    /// <summary>
-    /// returns instance of <see cref="Solver"/> with different implicit and explicit operators
-    /// </summary>
-    /// <param name="matrix">matrix for conversion to <see cref="_input"/></param>
-    public Solver(Matrix<double> matrix)
-    {
-        _isMatrix = true;
-        _parser = new Parser(string.Empty);
-        try
-        {
-            Solve(null, matrix);
-        }
-        catch (Exception exception)
-        {
-            Error.Message = exception.Message;
-            Error.InnerMessage = exception.InnerException?.Message;
-        }
+        _storage = storage;
     }
 
     /// <summary>
     /// returns instance of <see cref="Solver"/> with solved matrix
     /// </summary>
     /// <param name="input"><see cref="_input"/></param>
-    public Solver Solve(string input)
+    public async Task<Solver> SolveAsync(string input)
     {
         _input = SetInputConfiguration(input);
 
@@ -115,7 +67,7 @@ public sealed class Solver
         _parser = new Parser(_input);
         try
         {
-            Solve(_input.GetUnknownVariables(), null);
+            return await SolveAsync(_input.GetUnknownVariables(), null);
         }
         catch (Exception exception)
         {
@@ -131,13 +83,13 @@ public sealed class Solver
     /// </summary>
     /// <param name="matrix">matrix for conversion to <see cref="_input"/></param>
     /// <returns></returns>
-    public Solver Solve(Matrix<double> matrix)
+    public async Task<Solver> SolveAsync(Matrix<double> matrix)
     {
         _isMatrix = true;
         _parser = new Parser(string.Empty);
         try
         {
-            Solve(null, matrix);
+            return await SolveAsync(null, matrix);
         }
         catch (Exception exception)
         {
@@ -161,22 +113,69 @@ public sealed class Solver
     }
 
     /// <summary>
+    /// returns instance of <see cref="Solver"/> with solved matrix
+    /// </summary>
+    /// <param name="input"><see cref="_input"/></param>
+    public Solver Solve(string input)
+    {
+        _input = SetInputConfiguration(input);
+
+        if (string.IsNullOrEmpty(_input))
+            return this;
+
+        _parser = new Parser(_input);
+        try
+        {
+            return Solve(_input.GetUnknownVariables(), null);
+        }
+        catch (Exception exception)
+        {
+            Error.Message = exception.Message;
+            Error.InnerMessage = exception.InnerException?.Message;
+        }
+
+        return this;
+    }
+
+    /// <summary>
+    /// returns instance of <see cref="Solver"/> with solved matrix
+    /// </summary>
+    /// <param name="matrix">matrix for conversion to <see cref="_input"/></param>
+    /// <returns></returns>
+    public Solver Solve(Matrix<double> matrix)
+    {
+        _isMatrix = true;
+        _parser = new Parser(string.Empty);
+        try
+        {
+            return Solve(null, matrix);
+        }
+        catch (Exception exception)
+        {
+            Error.Message = exception.Message;
+            Error.InnerMessage = exception.InnerException?.Message;
+        }
+
+        return this;
+    }
+
+    /// <summary>
     /// solves system linear equations. set values to <see cref="Result"/>, <see cref="LeftSide"/>, <see cref="RightSide"/>
     /// </summary>
-    private void Solve(string unknownVariables, Matrix<double> matrix)
+    private async Task<Solver> SolveAsync(string unknownVariables, Matrix<double> matrix)
     {
         LeftSide = _parser.MatrixConversion(unknownVariables, matrix);
         if (LeftSide is null)
         {
             Error.Message = $"{nameof(LeftSide)} is null.";
-            return;
+            return this;
         }
 
         RightSide = _parser.VectorConversion(unknownVariables, matrix);
         if (RightSide is null)
         {
             Error.Message = $"{nameof(RightSide)} is null.";
-            return;
+            return this;
         }
 
         try
@@ -188,6 +187,48 @@ public sealed class Solver
             Error.Message = exception.Message;
             Error.InnerMessage = exception.InnerException?.Message;
         }
+
+        var saved = await _storage.SaveAsync(this);
+        if (saved.IsFailed)
+            Error.Message = "Failed to save";
+
+        return this;
+    }
+
+    /// <summary>
+    /// solves system linear equations. set values to <see cref="Result"/>, <see cref="LeftSide"/>, <see cref="RightSide"/>
+    /// </summary>
+    private Solver Solve(string unknownVariables, Matrix<double> matrix)
+    {
+        LeftSide = _parser.MatrixConversion(unknownVariables, matrix);
+        if (LeftSide is null)
+        {
+            Error.Message = $"{nameof(LeftSide)} is null.";
+            return this;
+        }
+
+        RightSide = _parser.VectorConversion(unknownVariables, matrix);
+        if (RightSide is null)
+        {
+            Error.Message = $"{nameof(RightSide)} is null.";
+            return this;
+        }
+
+        try
+        {
+            Result = LeftSide.Solve(RightSide);
+        }
+        catch (Exception exception)
+        {
+            Error.Message = exception.Message;
+            Error.InnerMessage = exception.InnerException?.Message;
+        }
+
+        var saved = _storage.Save(this);
+        if (saved.IsFailed)
+            Error.Message = "Failed to save";
+
+        return this;
     }
 
     /// <summary>

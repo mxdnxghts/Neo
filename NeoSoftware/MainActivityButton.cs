@@ -199,8 +199,8 @@ namespace NeoSoftware
                 if (EquationValueStorage.IsEquation)
                 {
                     SetEquations(_gridLayoutMatrix);
-                    var solver = new Solver().Solve(_equations);
-                    ShowResult(_inputEquations.Replace(Parser.SplitSymbol, '\n'), solver.ToString(),
+                    _solver.Solve(_equations);
+                    ShowResult(_inputEquations.Replace(Parser.SplitSymbol, '\n'), _solver.ToString(),
                         ResultKind.Solve);
                 }
                 else
@@ -214,8 +214,8 @@ namespace NeoSoftware
                         return;
                     }
 
-                    var solver = new Solver().Solve(_matrix);
-                    ShowResult(_inputMatrix.GetMatrixValue(), solver.ToString(), ResultKind.Solve);
+                    _solver.Solve(_matrix);
+                    ShowResult(_inputMatrix.GetMatrixValue(), _solver.ToString(), ResultKind.Solve);
                 }
             };
         }
@@ -350,7 +350,7 @@ namespace NeoSoftware
         {
             _detectSwitch.Checked = _detect;
             _confirmationAlertDialog.Cancel();
-            _output.Text = new Solver(_tessOutput.Text);
+            _output.Text = _solver.Solve(_tessOutput.Text);
         }
 
         [Export("BackToRecognition")]
