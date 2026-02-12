@@ -22,6 +22,6 @@ public class Benchmarks
     [Benchmark]
     public void TestSolverSpeed()
     {
-        var result = new Solver(equationInput);
+        var result = new Solver(this.equationInput);
     }
 }

@@ -1,5 +1,6 @@
 ﻿using MathNet.Numerics.LinearAlgebra;
 using Neo.Services;
+using Neo.Utilities;
 
 namespace TestNeoSoftware;
 
@@ -12,6 +13,19 @@ public class TestParserExtension
     public void Setup()
     {
         // _parser = new Parser(equationInput);
+    }
+
+    [Test]
+    public void TestGetLongestString()
+    {
+        var list = new List<string>()
+        {
+            "1",
+            "124",
+            "23"
+        };
+        var s = list.GetLongestString();
+        Assert.That(list.GetLongestString().Length, Is.EqualTo(3));
     }
 
     [Test]
