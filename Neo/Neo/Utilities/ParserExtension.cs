@@ -292,7 +292,8 @@ public static class ParserExtension
     /// <returns></returns>
     private static string GetLongestString(this List<string> list)
     {
-        return list.OrderByDescending(s => s.Length).First();
+        return list.Aggregate((longest, next) =>
+            next.Length > longest.Length ? next : longest);
     }
 
     /// <summary>
