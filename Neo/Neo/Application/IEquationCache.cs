@@ -10,42 +10,20 @@ namespace Neo.Application;
 
 public interface IEquationCache
 {
-    // Caching parsed systems
-    Result<EquationSystem?> GetCachedSystem(string inputHash);
-    void CacheSystem(string inputHash, EquationSystem system, TimeSpan? ttl = null);
-
-    // Caching solutions
-    Result<Solution?> GetCachedSolution(string systemHash);
-    void CacheSolution(string systemHash, Solution solution, TimeSpan? ttl = null);
-
-    // Statistics
-    CacheStatistics GetStatistics();
+    Result<EquationSystem?> GetSystem(string key);
+    void SetSystem(string key, EquationSystem system, TimeSpan? ttl = null);
+    Result<Solution?> GetSolution(string key);
+    void SetSolution(string key, Solution solution, TimeSpan? ttl = null);
     void Clear();
 }
 
 public interface IBatchProcessor
 {
-    // Parallel processing
-    Task<IReadOnlyList<Result<Solution>>> ProcessBatchAsync(
+    IObservable<BatchProgress> Progress { get; }
+    Task<IReadOnlyList<Result<Solution>>> ProcessAsync(
         IEnumerable<EquationSystem> systems,
         int maxDegreeOfParallelism = -1,
-        CancellationToken cancellationToken = default);
-
-    // Priority-based processing
-    Task<IReadOnlyList<Result<Solution>>> ProcessWithPriorityAsync(
-        IEnumerable<(EquationSystem System, int Priority)> systems,
-        CancellationToken cancellationToken = default);
-
-    // Progress reporting
-    IObservable<BatchProgress> Progress { get; }
+        CancellationToken cancellation = default);
 }
 
-public record BatchProgress
-{
-    public int TotalItems { get; init; }
-    public int ProcessedItems { get; init; }
-    public int SuccessfulItems { get; init; }
-    public int FailedItems { get; init; }
-    public TimeSpan ElapsedTime { get; init; }
-    public TimeSpan EstimatedRemainingTime { get; init; }
-}
+public record BatchProgress(int Total, int Processed, int Succeeded, int Failed, TimeSpan Elapsed);
