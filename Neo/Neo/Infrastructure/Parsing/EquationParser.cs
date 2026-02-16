@@ -9,20 +9,25 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Neo.Infrastructure.Parsing;
 
-public class EquationParser : IEquationParser
+public sealed class EquationParser : IEquationParser
 {
+    private const int StackallocTokenThreshold = 128;
+
     private readonly PerformanceMonitor? _performanceMonitor;
     private readonly ArrayPool<LinearEquation> _equationPool;
+    private readonly ArrayPool<TokenInfo> _tokenPool;
 
     public EquationParser(PerformanceMonitor? performanceMonitor = null)
     {
         _performanceMonitor = performanceMonitor;
         _equationPool = ArrayPool<LinearEquation>.Shared;
+        _tokenPool = ArrayPool<TokenInfo>.Shared;
     }
 
     public Result<EquationSystem> Parse(string input)
@@ -31,34 +36,48 @@ public class EquationParser : IEquationParser
             return Result<EquationSystem>.Failure(Error.EmptyInput);
 
         var stopwatch = Stopwatch.StartNew();
+        var span = input.AsSpan();
 
         try
         {
-            var span = input.AsSpan();
-
-            // Use stack allocation for token buffer
-            Span<TokenInfo> tokenBuffer = stackalloc TokenInfo[128];
-            var tokenizer = new EquationTokenizer(span, tokenBuffer);
-            var tokens = tokenizer.Tokenize();
-
-            // Parse tokens
-            var result = ParseTokens(tokens, input.AsMemory());
-
-            stopwatch.Stop();
-            _performanceMonitor?.RecordOperation("Parse", stopwatch.Elapsed, result.IsSuccess);
-
-            return result;
+            // Tokenize – use stackalloc for small, fallback to ArrayPool for large
+            var tokenResult = TokenizeWithAdaptiveBuffer(span);
+            using (tokenResult)
+            {
+                var result = ParseTokens(tokenResult.Tokens, input.AsMemory());
+                stopwatch.Stop();
+                _performanceMonitor?.RecordOperation("Parse", stopwatch.Elapsed, result.IsSuccess);
+                return result;
+            }
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             _performanceMonitor?.RecordOperation("Parse", stopwatch.Elapsed, false);
-
             return Result<EquationSystem>.Failure(
                 new Error($"Parsing failed: {ex.Message}", "PARSE_ERROR", ex));
         }
     }
 
+    // ---------- Adaptive Tokenization ----------
+    private TokenizedResult TokenizeWithAdaptiveBuffer(ReadOnlySpan<char> span)
+    {
+        // Try stackalloc first
+        Span<TokenInfo> stackBuffer = stackalloc TokenInfo[StackallocTokenThreshold];
+        var tokenizer = new EquationTokenizer(span, stackBuffer);
+        var tokens = tokenizer.Tokenize();
+
+        if (tokens.Length <= StackallocTokenThreshold)
+            return new TokenizedResult(stackBuffer.Slice(tokens.Length).ToArray(), ownsBuffer: false);
+
+        // Fallback to pooled array
+        var poolBuffer = _tokenPool.Rent(tokens.Length * 2); // over-allocate to avoid re-rent
+        tokenizer = new EquationTokenizer(span, poolBuffer);
+        tokens = tokenizer.Tokenize();
+        return new TokenizedResult(poolBuffer, tokens.Length, _tokenPool);
+    }
+
+    // ---------- Token Parsing ----------
     private Result<EquationSystem> ParseTokens(ReadOnlySpan<TokenInfo> tokens, ReadOnlyMemory<char> source)
     {
         var equations = _equationPool.Rent(10);
@@ -67,41 +86,44 @@ public class EquationParser : IEquationParser
         try
         {
             var position = 0;
-
             while (position < tokens.Length && tokens[position].Type != TokenType.End)
             {
-                var equationResult = ParseEquation(tokens, source, ref position);
-                if (equationResult.IsFailure)
-                    return Result<EquationSystem>.Failure(equationResult.Error);
+                var eqResult = ParseEquation(tokens, source, ref position);
+                if (eqResult.IsFailure)
+                    return Result<EquationSystem>.Failure(eqResult.Error!);
 
-                // Ensure capacity
                 if (equationCount >= equations.Length)
                 {
                     var newArray = _equationPool.Rent(equations.Length * 2);
                     Array.Copy(equations, newArray, equationCount);
-                    _equationPool.Return(equations);
+                    ClearAndReturnArray(equations, equationCount);
                     equations = newArray;
                 }
 
-                equations[equationCount++] = equationResult.Value;
+                equations[equationCount++] = eqResult.Value!;
 
-                // Skip separator if present
                 if (position < tokens.Length && tokens[position].Type == TokenType.Separator)
                     position++;
             }
 
-            // Create final array with exact size
-            var finalEquations = new LinearEquation[equationCount];
-            Array.Copy(equations, finalEquations, equationCount);
-
-            return Result<EquationSystem>.Success(new EquationSystem(finalEquations));
+            var final = new LinearEquation[equationCount];
+            Array.Copy(equations, final, equationCount);
+            return Result<EquationSystem>.Success(new EquationSystem(final));
         }
         finally
         {
-            _equationPool.Return(equations);
+            ClearAndReturnArray(equations, equationCount);
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void ClearAndReturnArray(LinearEquation[] array, int length)
+    {
+        Array.Clear(array, 0, length);
+        ArrayPool<LinearEquation>.Shared.Return(array);
+    }
+
+    // ---------- Single Equation Parsing ----------
     private Result<LinearEquation> ParseEquation(
         ReadOnlySpan<TokenInfo> tokens,
         ReadOnlyMemory<char> source,
@@ -110,9 +132,11 @@ public class EquationParser : IEquationParser
         var coefficients = new Dictionary<Variable, double>();
         double constant = 0;
         bool hasEquals = false;
-        bool isNegative = false;
-        bool expectingCoefficient = false;
         double pendingCoefficient = 0;
+        bool expectingCoefficient = false;
+        bool nextIsNegative = false;  // sign for the next term
+
+        var sourceSpan = source.Span;
 
         while (position < tokens.Length)
         {
@@ -121,74 +145,73 @@ public class EquationParser : IEquationParser
             switch (token.Type)
             {
                 case TokenType.Number:
-                    var numberSpan = source.Span.Slice(token.Start, token.Length);
-                    var numberValue = FastParseNumber(numberSpan);
+                    var numberSpan = sourceSpan.Slice(token.Start, token.Length);
+                    if (!TryParseNumber(numberSpan, out double number, out var numberError))
+                        return Result<LinearEquation>.Failure(numberError!);
 
-                    if (isNegative)
-                    {
-                        numberValue = -numberValue;
-                        isNegative = false;
-                    }
+                    if (nextIsNegative)
+                        number = -number;
+                    nextIsNegative = false;
 
-                    pendingCoefficient = numberValue;
+                    pendingCoefficient = number;
                     expectingCoefficient = true;
                     position++;
                     break;
 
                 case TokenType.Variable:
-                    var variableSpan = source.Span.Slice(token.Start, token.Length);
-                    var variableName = variableSpan.ToString();
-                    var variable = Variable.Create(variableName);
+                    var varSpan = sourceSpan.Slice(token.Start, token.Length);
 
-                    // Determine coefficient value
-                    double coefficientValue;
+                    // Validate variable name before creation
+                    if (!IsValidVariableName(varSpan))
+                        return Result<LinearEquation>.Failure(
+                            new Error("INVALID_VARIABLE", $"Invalid variable name: '{varSpan.ToString()}'"));
+
+                    var variable = Variable.Create(varSpan.ToString());  // uses span overload
+
+                    double coeffValue;
                     if (expectingCoefficient)
                     {
-                        coefficientValue = pendingCoefficient;
+                        coeffValue = pendingCoefficient;
                         expectingCoefficient = false;
                     }
                     else
                     {
-                        // Implicit coefficient of 1 (or -1)
-                        coefficientValue = isNegative ? -1 : 1;
-                        isNegative = false;
+                        coeffValue = nextIsNegative ? -1 : 1;
+                        nextIsNegative = false;
                     }
 
-                    // Handle existing coefficient for same variable
-                    if (coefficients.TryGetValue(variable, out var existingCoefficient))
-                    {
-                        coefficients[variable] = existingCoefficient + coefficientValue;
-                    }
+                    // Combine coefficients if variable already exists
+                    if (coefficients.TryGetValue(variable, out var existing))
+                        coefficients[variable] = existing + coeffValue;
                     else
-                    {
-                        coefficients[variable] = coefficientValue;
-                    }
+                        coefficients[variable] = coeffValue;
 
                     position++;
                     break;
 
                 case TokenType.Operator:
-                    isNegative = true; // Only minus is an operator in this context
+                    // Determine sign from token value (not just presence)
+                    var opSpan = sourceSpan.Slice(token.Start, token.Length);
+                    if (opSpan.Length > 0 && opSpan[0] == '-')
+                        nextIsNegative = true;
+                    // '+' resets sign (already false)
                     position++;
                     break;
 
                 case TokenType.Equals:
                     hasEquals = true;
-
-                    // If we have a pending coefficient before equals, it's a constant on left side
                     if (expectingCoefficient)
                     {
-                        constant = -pendingCoefficient; // Move to right side with sign change
+                        constant = -pendingCoefficient; // move to RHS
                         expectingCoefficient = false;
                     }
-
                     position++;
                     break;
 
                 case TokenType.Separator:
                 case TokenType.End:
-                    // End of equation
-                    return FinalizeEquation(coefficients, constant, hasEquals, pendingCoefficient, expectingCoefficient);
+                    // Finalize equation
+                    return BuildEquation(coefficients, constant, hasEquals, pendingCoefficient, expectingCoefficient);
 
                 default:
                     position++;
@@ -196,68 +219,136 @@ public class EquationParser : IEquationParser
             }
         }
 
-        return FinalizeEquation(coefficients, constant, hasEquals, pendingCoefficient, expectingCoefficient);
+        return BuildEquation(coefficients, constant, hasEquals, pendingCoefficient, expectingCoefficient);
     }
 
-    private static double FastParseNumber(ReadOnlySpan<char> span)
+    // ---------- Number Parsing (Zero‑Allocation) ----------
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool TryParseNumber(ReadOnlySpan<char> span, out double value, out Error? error)
     {
-        ReadOnlySpan<char> dotChar = ".".AsSpan();
-        // Fast path for integers
-        if (!span.Contains(".".AsSpan(), StringComparison.CurrentCultureIgnoreCase) &&
-            !span.Contains(",".AsSpan(), StringComparison.CurrentCultureIgnoreCase))
+        error = null;
+        value = 0;
+
+        if (span.IsEmpty)
         {
-            return FastParseInteger(span);
+            error = new Error("EMPTY_NUMBER", "Empty numeric token.");
+            return false;
         }
 
-        // Fall back to double.Parse for floats
-        return double.Parse(span.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture);
+        // Fast path: integer (no '.' or ',')
+        if (!span.ContainsAny('.', ','))
+        {
+            if (!IsAllDigits(span, out var negative, out var start))
+            {
+                error = new Error("INVALID_INTEGER", $"Invalid integer format: '{span.ToString()}'");
+                return false;
+            }
+
+            long result = 0;
+            for (int i = start; i < span.Length; i++)
+                result = result * 10 + (span[i] - '0');
+
+            value = negative ? -result : result;
+            return true;
+        }
+
+        // Slow path: floating point – use span‑based double.TryParse (no allocation)
+        if (double.TryParse(span, NumberStyles.Any, CultureInfo.InvariantCulture, out value))
+            return true;
+
+        error = new Error("INVALID_FLOAT", $"Invalid floating‑point number: '{span.ToString()}'");
+        return false;
     }
 
-    private static double FastParseInteger(ReadOnlySpan<char> span)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsAllDigits(ReadOnlySpan<char> span, out bool negative, out int start)
     {
-        int result = 0;
-        bool negative = false;
-        int start = 0;
+        negative = false;
+        start = 0;
 
         if (span[0] == '-')
         {
             negative = true;
             start = 1;
+            if (span.Length == 1)
+                return false;
         }
 
         for (int i = start; i < span.Length; i++)
-        {
-            result = result * 10 + (span[i] - '0');
-        }
+            if (!char.IsDigit(span[i]))
+                return false;
 
-        return negative ? -result : result;
+        return true;
     }
 
-    private Result<LinearEquation> FinalizeEquation(
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsValidVariableName(ReadOnlySpan<char> span)
+    {
+        if (span.IsEmpty)
+            return false;
+        // Single letter, optional digits/underscores after first char (for future)
+        if (!char.IsLetter(span[0]))
+            return false;
+        for (int i = 1; i < span.Length; i++)
+            if (!char.IsLetterOrDigit(span[i]) && span[i] != '_')
+                return false;
+        return true;
+    }
+
+    // ---------- Equation Finalization ----------
+    private Result<LinearEquation> BuildEquation(
         Dictionary<Variable, double> coefficients,
         double constant,
         bool hasEquals,
         double pendingCoefficient,
         bool expectingCoefficient)
     {
-        // Handle trailing coefficient (constant on right side)
         if (hasEquals && expectingCoefficient)
-        {
             constant = pendingCoefficient;
-        }
 
         if (coefficients.Count == 0)
             return Result<LinearEquation>.Failure(
-                new Error("Equation has no variables", "NO_VARIABLES"));
+                new Error("NO_VARIABLES", "Equation must contain at least one variable."));
 
-        var coefficientList = coefficients.Select(kvp => new Coefficient(kvp.Value, kvp.Key));
-        return Result<LinearEquation>.Success(new LinearEquation(coefficientList, constant));
+        var coeffList = coefficients.Select(kvp => new Coefficient(kvp.Value, kvp.Key));
+        return Result<LinearEquation>.Success(new LinearEquation(coeffList, constant));
     }
 
-    public async Task<Result<EquationSystem>> ParseAsync(
-        string input,
-        CancellationToken cancellationToken = default)
+    // ---------- Async ----------
+    public Task<Result<EquationSystem>> ParseAsync(string input, CancellationToken cancellationToken = default)
+        => Task.Run(() => Parse(input), cancellationToken);
+}
+
+// ---------- Helper: Disposable TokenizedResult ----------
+internal readonly ref struct TokenizedResult
+{
+    private readonly TokenInfo[]? _rentedBuffer;
+    private readonly ArrayPool<TokenInfo>? _pool;
+    public ReadOnlySpan<TokenInfo> Tokens { get; }
+
+    // For stackalloc path (no disposal)
+    public TokenizedResult(Span<TokenInfo> tokens, bool ownsBuffer)
     {
-        return await Task.Run(() => Parse(input), cancellationToken);
+        var arr = new TokenInfo[tokens.Length];
+        tokens.CopyTo(arr);
+        Tokens = arr;
+        _rentedBuffer = null;
+        _pool = null;
+    }
+
+    // For pooled array path
+    public TokenizedResult(TokenInfo[] buffer, int count, ArrayPool<TokenInfo> pool)
+    {
+        _rentedBuffer = buffer;
+        _pool = pool;
+        Tokens = new ReadOnlySpan<TokenInfo>(buffer, 0, count);
+    }
+
+    public void Dispose()
+    {
+        if (_rentedBuffer != null && _pool != null)
+        {
+            _pool.Return(_rentedBuffer, clearArray: true);
+        }
     }
 }
