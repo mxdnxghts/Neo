@@ -134,8 +134,7 @@ public sealed class MatrixConverter : IMatrixConverter, IDisposable
 
     private void ThrowIfDisposed()
     {
-        if (_disposed)
-            throw new ObjectDisposedException(nameof(MatrixConverter));
+        ObjectDisposedException.ThrowIf(_disposed, this);
     }
 
     public void Dispose()
