@@ -32,4 +32,3 @@ public class InfrastructureOptions
     public bool EnablePerformanceMonitoring { get; set; } = true;
     public bool UseParallelProcessing { get; set; } = true;
 }
-}
