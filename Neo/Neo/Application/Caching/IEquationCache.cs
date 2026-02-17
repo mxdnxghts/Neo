@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Neo.Application;
+namespace Neo.Application.Caching;
 
 public interface IEquationCache
 {
