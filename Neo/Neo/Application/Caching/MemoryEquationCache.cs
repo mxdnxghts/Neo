@@ -13,8 +13,8 @@ public sealed class MemoryEquationCache : IEquationCache
 
     public Result<EquationSystem?> GetSystem(string key) =>
         _systemCache.TryGetValue(key, out var entry) && !entry.IsExpired
-            ? Result<EquationSystem?>.Success(entry.Value)
-            : Result<EquationSystem?>.Success(null);
+            ? Result<EquationSystem>.Success(entry.Value)
+            : Result<EquationSystem>.Success(null);
 
     public void SetSystem(string key, EquationSystem system, TimeSpan? ttl = null)
     {
@@ -24,8 +24,8 @@ public sealed class MemoryEquationCache : IEquationCache
 
     public Result<Solution?> GetSolution(string key) =>
         _solutionCache.TryGetValue(key, out var entry) && !entry.IsExpired
-            ? Result<Solution?>.Success(entry.Value)
-            : Result<Solution?>.Success(null);
+            ? Result<Solution>.Success(entry.Value)
+            : Result<Solution>.Success(null);
 
     public void SetSolution(string key, Solution solution, TimeSpan? ttl = null)
     {
