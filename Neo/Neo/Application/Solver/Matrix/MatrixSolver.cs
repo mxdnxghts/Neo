@@ -1,4 +1,5 @@
 ﻿using MathNet.Numerics.LinearAlgebra;
+using Neo.Application.Solver.Equation;
 using Neo.Domain.Result;
 using System;
 using System.Collections.Generic;
@@ -6,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Neo.Application.Solver;
+namespace Neo.Application.Solver.Matrix;
 
 public sealed class MatrixSolver : IMatrixSolver
 {

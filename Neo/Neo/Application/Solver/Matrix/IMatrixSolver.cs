@@ -1,7 +1,8 @@
 ﻿using MathNet.Numerics.LinearAlgebra;
+using Neo.Application.Solver.Equation;
 using Neo.Domain.Result;
 
-namespace Neo.Application.Solver;
+namespace Neo.Application.Solver.Matrix;
 
 public interface IMatrixSolver
 {
