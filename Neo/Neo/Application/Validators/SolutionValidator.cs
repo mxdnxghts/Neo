@@ -36,9 +36,15 @@ public sealed class SolutionValidator : ISolutionValidator
     /// <inheritdoc/>
     public SolutionStatus DetermineStatus(EquationSystem system, Matrix<double> a, Vector<double> b)
     {
-        var augmented = a.Append(b.ToColumnMatrix()).AsArray();
+        if (a == null || b == null)
+            return SolutionStatus.Error;
+
+        var augmentedMatrix = a.Append(b.ToColumnMatrix());
+        if (augmentedMatrix == null)
+            return SolutionStatus.Error;
+            
         var rankA = a.Rank();
-        var rankAug = Matrix<double>.Build.DenseOfArray(augmented).Rank();
+        var rankAug = augmentedMatrix.Rank();
 
         if (rankA < rankAug)
             return SolutionStatus.NoSolution;

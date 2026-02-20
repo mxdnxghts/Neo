@@ -52,17 +52,33 @@ public ref struct EquationTokenizer
             }
 
             // Process based on character type
-            if (IsDigit(current) || current == ParsingConstants.NegativeSymbol)
+            // Check for number (digit or minus followed by digit)
+            if (IsDigit(current))
             {
                 if (!ReadNumber())
                     break;
+            }
+            else if (current == ParsingConstants.NegativeSymbol)
+            {
+                // Check if minus is followed by a digit (number) or variable/operator
+                if (_position + 1 < _input.Length && IsDigit(_input[_position + 1]))
+                {
+                    if (!ReadNumber())
+                        break;
+                }
+                else
+                {
+                    // Minus before variable or at start - treat as operator
+                    if (!ReadOperator())
+                        break;
+                }
             }
             else if (IsVariableStart(current))
             {
                 if (!ReadVariable())
                     break;
             }
-            else if (current == ParsingConstants.PlusSymbol || current == ParsingConstants.NegativeSymbol)
+            else if (current == ParsingConstants.PlusSymbol)
             {
                 if (!ReadOperator())
                     break;
@@ -116,6 +132,7 @@ public ref struct EquationTokenizer
             return false;
 
         var start = _position;
+        var hasDigit = false;
 
         // Handle negative sign
         if (_input[_position] == ParsingConstants.NegativeSymbol)
@@ -123,10 +140,18 @@ public ref struct EquationTokenizer
             _position++;
         }
 
-        // Read integer part
+        // Read integer part - must have at least one digit
         while (_position < _input.Length && IsDigit(_input[_position]))
         {
             _position++;
+            hasDigit = true;
+        }
+
+        // If no digits after minus sign, this is not a number
+        if (!hasDigit)
+        {
+            _position = start; // Reset position
+            return false;
         }
 
         // Read decimal part
@@ -172,15 +197,15 @@ public ref struct EquationTokenizer
             return false;
 
         var start = _position;
+        var current = _input[_position];
 
-        if (_input[_position] == ParsingConstants.PlusSymbol)
+        if (current == ParsingConstants.PlusSymbol || current == ParsingConstants.NegativeSymbol)
         {
             _position++;
             _tokenSpan[_tokenCount++] = new TokenInfo(TokenType.Operator, start, 1);
         }
         else
         {
-            // Minus is handled as part of number
             _position++;
         }
         return true;

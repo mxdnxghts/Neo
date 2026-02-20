@@ -42,14 +42,13 @@ public sealed partial class LinearEquation : IEquatable<LinearEquation>
     }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="LinearEquation"/> class using a dictionary.
+    /// Creates a new <see cref="LinearEquation"/> from a dictionary of coefficients.
     /// </summary>
     /// <param name="coefficients">Dictionary mapping variables to coefficients.</param>
     /// <param name="constant">The constant term.</param>
-    public LinearEquation(IReadOnlyDictionary<Variable, double> coefficients, double constant)
-        : this(coefficients.Select(kvp => new Coefficient(kvp.Value, kvp.Key)), constant)
-    {
-    }
+    /// <returns>A new <see cref="LinearEquation"/> instance.</returns>
+    public static LinearEquation FromDictionary(IDictionary<Variable, double> coefficients, double constant)
+        => new(coefficients.Select(kvp => new Coefficient(kvp.Value, kvp.Key)), constant);
 
     /// <summary>
     /// Gets the coefficient for the specified variable.
@@ -77,7 +76,7 @@ public sealed partial class LinearEquation : IEquatable<LinearEquation>
         if (HasVariable(variable))
             return this;
         var newCoeffs = new Dictionary<Variable, double>(_coefficients) { [variable] = 0 };
-        return new LinearEquation(newCoeffs, Constant);
+        return FromDictionary(newCoeffs, Constant);
     }
 
     /// <inheritdoc/>

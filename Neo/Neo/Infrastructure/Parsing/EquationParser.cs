@@ -68,7 +68,12 @@ public sealed class EquationParser : IEquationParser
         var tokens = tokenizer.Tokenize();
 
         if (tokens.Length <= StackallocTokenThreshold)
-            return new TokenizedResult(stackBuffer.Slice(tokens.Length).ToArray(), ownsBuffer: false);
+        {
+            // Copy tokens to array for return
+            var arr = new TokenInfo[tokens.Length];
+            tokens.CopyTo(arr);
+            return new TokenizedResult(arr, ownsBuffer: false);
+        }
 
         // Fallback to pooled array
         var poolBuffer = _tokenPool.Rent(tokens.Length * 2); // over-allocate to avoid re-rent
@@ -135,6 +140,7 @@ public sealed class EquationParser : IEquationParser
         double pendingCoefficient = 0;
         bool expectingCoefficient = false;
         bool nextIsNegative = false;  // sign for the next term
+        bool onRightSide = false;  // track if we're after "="
 
         var sourceSpan = source.Span;
 
@@ -153,8 +159,16 @@ public sealed class EquationParser : IEquationParser
                         number = -number;
                     nextIsNegative = false;
 
-                    pendingCoefficient = number;
-                    expectingCoefficient = true;
+                    if (onRightSide)
+                    {
+                        // On right side: this is part of the constant
+                        constant += number;
+                    }
+                    else
+                    {
+                        pendingCoefficient = number;
+                        expectingCoefficient = true;
+                    }
                     position++;
                     break;
 
@@ -200,10 +214,13 @@ public sealed class EquationParser : IEquationParser
 
                 case TokenType.Equals:
                     hasEquals = true;
+                    onRightSide = true;
                     if (expectingCoefficient)
                     {
-                        constant = -pendingCoefficient; // move to RHS
+                        // Left-side constant: move to RHS (negate)
+                        constant = -pendingCoefficient;
                         expectingCoefficient = false;
+                        pendingCoefficient = 0;
                     }
                     position++;
                     break;
@@ -303,12 +320,12 @@ public sealed class EquationParser : IEquationParser
         double pendingCoefficient,
         bool expectingCoefficient)
     {
-        if (hasEquals && expectingCoefficient)
-            constant = pendingCoefficient;
+        // Note: constant is already accumulated during parsing
+        // No need to modify it here
 
         if (coefficients.Count == 0)
             return Result<LinearEquation>.Failure(
-                new Error("NO_VARIABLES", "Equation must contain at least one variable."));
+                new Error("Equation must contain at least one variable.", "NO_VARIABLES"));
 
         var coeffList = coefficients.Select(kvp => new Coefficient(kvp.Value, kvp.Key));
         return Result<LinearEquation>.Success(new LinearEquation(coeffList, constant));

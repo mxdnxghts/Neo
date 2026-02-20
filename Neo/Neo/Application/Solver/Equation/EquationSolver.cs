@@ -172,38 +172,36 @@ public sealed class EquationSolver : IEquationSolver
 
     private Result<Solution> SolveInternal(string input, SolvingOptions options)
     {
-        using (var activity = _performanceMonitor.StartActivity("SolveString"))
+        using var activity = _performanceMonitor.StartActivity("SolveString");
+        if (options.EnableCaching)
         {
-            if (options.EnableCaching)
+            var key = ComputeHash(input);
+            var cached = _cache.GetSolution(key);
+            if (cached.IsSuccess && cached.Value != null)
             {
-                var key = ComputeHash(input);
-                var cached = _cache.GetSolution(key);
-                if (cached.IsSuccess && cached.Value != null)
-                {
-                    activity.SetSuccess(true);
-                    return Result<Solution>.Success(cached.Value);
-                }
+                activity.SetSuccess(true);
+                return Result<Solution>.Success(cached.Value);
             }
-
-            var parseResult = _parser.Parse(input);
-            if (parseResult.IsFailure)
-            {
-                activity.SetSuccess(false);
-                return Result<Solution>.Failure(parseResult.Error!);
-            }
-
-            var system = parseResult.Value!;
-            var solutionResult = SolveInternal(system, options);
-
-            if (solutionResult.IsSuccess && options.EnableCaching)
-            {
-                var key = ComputeHash(input);
-                _cache.SetSolution(key, solutionResult.Value!, options.CacheTtl);
-            }
-
-            activity.SetSuccess(solutionResult.IsSuccess);
-            return solutionResult;
         }
+
+        var parseResult = _parser.Parse(input);
+        if (parseResult.IsFailure)
+        {
+            activity.SetSuccess(false);
+            return Result<Solution>.Failure(parseResult.Error!);
+        }
+
+        var system = parseResult.Value!;
+        var solutionResult = SolveInternal(system, options);
+
+        if (solutionResult.IsSuccess && options.EnableCaching)
+        {
+            var key = ComputeHash(input);
+            _cache.SetSolution(key, solutionResult.Value!, options.CacheTtl);
+        }
+
+        activity.SetSuccess(solutionResult.IsSuccess);
+        return solutionResult;
     }
 
     private Result<Solution> SolveInternal(EquationSystem system, SolvingOptions options)
@@ -349,7 +347,7 @@ public sealed class EquationSolver : IEquationSolver
             {
                 coeffDict[variables[j]] = coefficients[i, j];
             }
-            equations.Add(new LinearEquation(coeffDict, constants[i]));
+            equations.Add(LinearEquation.FromDictionary(coeffDict, constants[i]));
         }
 
         return Result<EquationSystem>.Success(new EquationSystem(equations));
