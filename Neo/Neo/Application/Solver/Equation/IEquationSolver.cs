@@ -124,32 +124,32 @@ public enum SolvingAlgorithm
 public record SolvingOptions
 {
     /// <summary>
-    /// Gets a value indicating whether caching is enabled.
+    /// Gets or sets a value indicating whether caching is enabled.
     /// Default: true
     /// </summary>
-    public bool EnableCaching { get; init; } = true;
+    public bool EnableCaching { get; set; } = true;
 
     /// <summary>
-    /// Gets the time-to-live for cached solutions.
+    /// Gets or sets the time-to-live for cached solutions.
     /// Default: 30 minutes
     /// </summary>
-    public TimeSpan CacheTtl { get; init; } = TimeSpan.FromMinutes(30);
+    public TimeSpan CacheTtl { get; set; } = TimeSpan.FromMinutes(30);
 
     /// <summary>
-    /// Gets the default solving algorithm.
+    /// Gets or sets the default solving algorithm.
     /// Default: LU
     /// </summary>
-    public SolvingAlgorithm DefaultAlgorithm { get; init; } = SolvingAlgorithm.LU;
+    public SolvingAlgorithm DefaultAlgorithm { get; set; } = SolvingAlgorithm.LU;
 
     /// <summary>
-    /// Gets the tolerance for solution validation (residual check).
+    /// Gets or sets the tolerance for solution validation (residual check).
     /// Default: 1e-10
     /// </summary>
-    public double ValidationTolerance { get; init; } = 1e-10;
+    public double ValidationTolerance { get; set; } = 1e-10;
 
     /// <summary>
-    /// Gets the maximum degree of parallelism for batch operations.
+    /// Gets or sets the maximum degree of parallelism for batch operations.
     /// -1 means use system default.
     /// </summary>
-    public int MaxDegreeOfParallelism { get; init; } = -1;
+    public int MaxDegreeOfParallelism { get; set; } = -1;
 }
