@@ -2,15 +2,17 @@
 using Neo.Application.Solver.Equation;
 using Neo.Domain.Result;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Neo.Application.Solver.Matrix;
 
+/// <summary>
+/// Implementation of <see cref="IMatrixSolver"/> using MathNet.Numerics.
+/// Supports LU, QR, Cholesky, and SVD decomposition algorithms.
+/// </summary>
 public sealed class MatrixSolver : IMatrixSolver
 {
+    /// <inheritdoc/>
     public Result<Vector<double>> Solve(Matrix<double> a, Vector<double> b, SolvingAlgorithm algorithm)
     {
         try
@@ -31,6 +33,7 @@ public sealed class MatrixSolver : IMatrixSolver
         }
     }
 
+    /// <inheritdoc/>
     public Result<Vector<double>> SolveLU(Matrix<double> a, Vector<double> b)
     {
         if (a.RowCount != a.ColumnCount)
@@ -45,12 +48,14 @@ public sealed class MatrixSolver : IMatrixSolver
         return Result<Vector<double>>.Success(solution);
     }
 
+    /// <inheritdoc/>
     public Result<Vector<double>> SolveQR(Matrix<double> a, Vector<double> b)
     {
         var solution = a.QR().Solve(b);
         return Result<Vector<double>>.Success(solution);
     }
 
+    /// <inheritdoc/>
     public Result<Vector<double>> SolveCholesky(Matrix<double> a, Vector<double> b)
     {
         if (!a.IsSymmetric())
@@ -66,12 +71,14 @@ public sealed class MatrixSolver : IMatrixSolver
         return Result<Vector<double>>.Success(solution);
     }
 
+    /// <inheritdoc/>
     public Result<Vector<double>> SolveSVD(Matrix<double> a, Vector<double> b)
     {
         var solution = a.Svd().Solve(b);
         return Result<Vector<double>>.Success(solution);
     }
 
+    /// <inheritdoc/>
     public double ConditionNumber(Matrix<double> matrix)
     {
         var svd = matrix.Svd();

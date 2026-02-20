@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 
 namespace Neo.Infrastructure.Matrix;
 
+/// <summary>
+/// High-performance implementation of <see cref="IMatrixConverter"/>.
+/// Uses <see cref="ArrayPool{T}"/> to minimize allocations during matrix conversion.
+/// </summary>
 public sealed class MatrixConverter : IMatrixConverter, IDisposable
 {
     private readonly ArrayPool<double> _arrayPool;
@@ -14,11 +18,16 @@ public sealed class MatrixConverter : IMatrixConverter, IDisposable
     private double[]? _rentedConstants;
     private bool _disposed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MatrixConverter"/> class.
+    /// </summary>
+    /// <param name="arrayPool">Optional custom array pool. Uses shared pool if not specified.</param>
     public MatrixConverter(ArrayPool<double>? arrayPool = null)
     {
         _arrayPool = arrayPool ?? ArrayPool<double>.Shared;
     }
 
+    /// <inheritdoc/>
     public Result<Matrix<double>> ToMathNetMatrix(EquationSystem system)
     {
         try
@@ -34,6 +43,7 @@ public sealed class MatrixConverter : IMatrixConverter, IDisposable
         }
     }
 
+    /// <inheritdoc/>
     public Result<Vector<double>> ToMathNetVector(EquationSystem system)
     {
         try
@@ -49,6 +59,7 @@ public sealed class MatrixConverter : IMatrixConverter, IDisposable
         }
     }
 
+    /// <inheritdoc/>
     public (double[,] Coefficients, double[] Constants) ToArrays(EquationSystem system)
     {
         ThrowIfDisposed();
@@ -57,16 +68,13 @@ public sealed class MatrixConverter : IMatrixConverter, IDisposable
         var equationCount = normalized.EquationCount;
         var variableCount = normalized.VariableCount;
 
-        // Rent arrays
         _rentedCoefficients = _arrayPool.Rent(equationCount * variableCount);
         _rentedConstants = _arrayPool.Rent(equationCount);
 
         try
         {
-            // Fill arrays
             FillArrays(normalized, _rentedCoefficients, _rentedConstants);
 
-            // Convert to 2D array and return copy
             var coefficientsArray = new double[equationCount, variableCount];
             Buffer.BlockCopy(_rentedCoefficients, 0, coefficientsArray, 0,
                 equationCount * variableCount * sizeof(double));
@@ -82,9 +90,15 @@ public sealed class MatrixConverter : IMatrixConverter, IDisposable
         }
     }
 
+    /// <summary>
+    /// Fills the coefficient and constant arrays from the equation system.
+    /// Uses parallel processing for large systems.
+    /// </summary>
+    /// <param name="system">The normalized equation system.</param>
+    /// <param name="coefficientArray">The coefficient array to fill.</param>
+    /// <param name="constantArray">The constant array to fill.</param>
     private void FillArrays(EquationSystem system, double[] coefficientArray, double[] constantArray)
     {
-        // Use parallel for large systems
         if (system.EquationCount > 10)
         {
             Parallel.For(0, system.EquationCount, i =>
@@ -117,6 +131,9 @@ public sealed class MatrixConverter : IMatrixConverter, IDisposable
         }
     }
 
+    /// <summary>
+    /// Returns rented arrays to the pool.
+    /// </summary>
     private void ReturnRentedArrays()
     {
         if (_rentedCoefficients != null)
@@ -137,6 +154,7 @@ public sealed class MatrixConverter : IMatrixConverter, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         if (!_disposed)

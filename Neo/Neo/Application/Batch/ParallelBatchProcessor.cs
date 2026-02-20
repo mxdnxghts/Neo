@@ -1,4 +1,4 @@
-﻿using Neo.Application.Solver;
+﻿using Neo.Application.Solver.Equation;
 using Neo.Domain.Equation;
 using Neo.Domain.Result;
 using Neo.Domain.Solution;

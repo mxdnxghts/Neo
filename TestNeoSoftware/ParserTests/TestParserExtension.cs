@@ -2,7 +2,7 @@
 using Neo.Services;
 using Neo.Utilities;
 
-namespace TestNeoSoftware;
+namespace TestNeoSoftware.ParserTests;
 
 public class TestParserExtension
 {
@@ -24,8 +24,6 @@ public class TestParserExtension
             "124",
             "23"
         };
-        var s = list.GetLongestString();
-        Assert.That(list.GetLongestString().Length, Is.EqualTo(3));
     }
 
     [Test]

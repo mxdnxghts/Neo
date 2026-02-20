@@ -5,8 +5,12 @@ using Neo.Domain.Result;
 
 namespace Neo.Application.Validators;
 
+/// <summary>
+/// Validates solutions by computing residuals and analyzing matrix rank.
+/// </summary>
 public sealed class SolutionValidator : ISolutionValidator
 {
+    /// <inheritdoc/>
     public Result<bool> Validate(EquationSystem system, Solution solution, double tolerance = 1e-10)
     {
         if (solution.Status != SolutionStatus.Success)
@@ -29,19 +33,19 @@ public sealed class SolutionValidator : ISolutionValidator
             : Result<bool>.Failure(new Error($"Residual too large: {maxError}", "VALIDATION_FAILED"));
     }
 
+    /// <inheritdoc/>
     public SolutionStatus DetermineStatus(EquationSystem system, Matrix<double> a, Vector<double> b)
     {
-        // Basic rank analysis
         var augmented = a.Append(b.ToColumnMatrix()).AsArray();
         var rankA = a.Rank();
         var rankAug = Matrix<double>.Build.DenseOfArray(augmented).Rank();
 
         if (rankA < rankAug)
-            return SolutionStatus.NoSolution; // inconsistent
+            return SolutionStatus.NoSolution;
 
         if (rankA < system.VariableCount)
             return SolutionStatus.InfiniteSolutions;
 
-        return SolutionStatus.Success; // unique solution
+        return SolutionStatus.Success;
     }
 }
