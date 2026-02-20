@@ -206,65 +206,63 @@ public sealed class EquationSolver : IEquationSolver
 
     private Result<Solution> SolveInternal(EquationSystem system, SolvingOptions options)
     {
-        using (var activity = _performanceMonitor.StartActivity("SolveSystem"))
+        using var activity = _performanceMonitor.StartActivity("SolveSystem");
+        var matrixResult = _converter.ToMathNetMatrix(system);
+        if (matrixResult.IsFailure)
         {
-            var matrixResult = _converter.ToMathNetMatrix(system);
-            if (matrixResult.IsFailure)
-            {
-                activity.SetSuccess(false);
-                return Result<Solution>.Failure(matrixResult.Error!);
-            }
-
-            var vectorResult = _converter.ToMathNetVector(system);
-            if (vectorResult.IsFailure)
-            {
-                activity.SetSuccess(false);
-                return Result<Solution>.Failure(vectorResult.Error!);
-            }
-
-            var a = matrixResult.Value;
-            var b = vectorResult.Value;
-
-            var status = _validator.DetermineStatus(system, a, b);
-            if (status != SolutionStatus.Success)
-            {
-                activity.SetSuccess(false);
-                return status switch
-                {
-                    SolutionStatus.NoSolution => Result<Solution>.Failure(
-                        new Error("System has no solution", "NO_SOLUTION")),
-                    SolutionStatus.InfiniteSolutions => Result<Solution>.Failure(
-                        new Error("System has infinitely many solutions", "INFINITE_SOLUTIONS")),
-                    _ => Result<Solution>.Failure(new Error("Invalid system", "INVALID_SYSTEM"))
-                };
-            }
-
-            var algorithm = SelectAlgorithm(a, options);
-            var solveResult = _matrixSolver.Solve(a, b, algorithm);
-            if (solveResult.IsFailure)
-            {
-                activity.SetSuccess(false);
-                return Result<Solution>.Failure(solveResult.Error!);
-            }
-
-            var x = solveResult.Value;
-
-            var values = system.Variables
-                .Select((v, i) => (v, x[i]))
-                .ToDictionary(t => t.v, t => t.Item2);
-
-            var solution = Solution.Success(system, values);
-
-            var validation = _validator.Validate(system, solution, options.ValidationTolerance);
-            if (validation.IsFailure)
-            {
-                activity.SetSuccess(false);
-                return Result<Solution>.Failure(validation.Error!);
-            }
-
-            activity.SetSuccess(true);
-            return Result<Solution>.Success(solution);
+            activity.SetSuccess(false);
+            return Result<Solution>.Failure(matrixResult.Error!);
         }
+
+        var vectorResult = _converter.ToMathNetVector(system);
+        if (vectorResult.IsFailure)
+        {
+            activity.SetSuccess(false);
+            return Result<Solution>.Failure(vectorResult.Error!);
+        }
+
+        var a = matrixResult.Value;
+        var b = vectorResult.Value;
+
+        var status = _validator.DetermineStatus(system, a, b);
+        if (status != SolutionStatus.Success)
+        {
+            activity.SetSuccess(false);
+            return status switch
+            {
+                SolutionStatus.NoSolution => Result<Solution>.Failure(
+                    new Error("System has no solution", "NO_SOLUTION")),
+                SolutionStatus.InfiniteSolutions => Result<Solution>.Failure(
+                    new Error("System has infinitely many solutions", "INFINITE_SOLUTIONS")),
+                _ => Result<Solution>.Failure(new Error("Invalid system", "INVALID_SYSTEM"))
+            };
+        }
+
+        var algorithm = SelectAlgorithm(a, options);
+        var solveResult = _matrixSolver.Solve(a, b, algorithm);
+        if (solveResult.IsFailure)
+        {
+            activity.SetSuccess(false);
+            return Result<Solution>.Failure(solveResult.Error!);
+        }
+
+        var x = solveResult.Value;
+
+        var values = system.Variables
+            .Select((v, i) => (v, x[i]))
+            .ToDictionary(t => t.v, t => t.Item2);
+
+        var solution = Solution.Success(system, values);
+
+        var validation = _validator.Validate(system, solution, options.ValidationTolerance);
+        if (validation.IsFailure)
+        {
+            activity.SetSuccess(false);
+            return Result<Solution>.Failure(validation.Error!);
+        }
+
+        activity.SetSuccess(true);
+        return Result<Solution>.Success(solution);
     }
 
     // ----------------------------------------------------------------------
