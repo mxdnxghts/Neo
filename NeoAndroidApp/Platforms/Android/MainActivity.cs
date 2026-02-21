@@ -1,7 +1,6 @@
 ﻿using Android.App;
 using Android.Content.PM;
 using Android.OS;
-using IronOcr;
 using Microsoft.Maui.Controls;
 
 namespace NeoAndroidApp;
