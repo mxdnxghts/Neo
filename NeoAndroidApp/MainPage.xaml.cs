@@ -1,47 +1,67 @@
-﻿using Tesseract;
-using IronOcr;
+﻿using NeoAndroidApp.Views;
+using NeoAndroidApp.ViewModels;
 
 namespace NeoAndroidApp;
 
+/// <summary>
+/// Main page of the Neo mobile application.
+/// Provides access to the Matrix Builder feature.
+/// </summary>
 public partial class MainPage : ContentPage
 {
-    private TesseractEngine _engine;
-
-    private readonly IronTesseract _ocrTesseract;
-
+    /// <summary>
+    /// Initializes a new instance of the MainPage.
+    /// </summary>
     public MainPage()
 	{
 		InitializeComponent();
-        _ocrTesseract = new IronTesseract()
-        {
-            Language = OcrLanguage.Financial,
-        };
 	}
 
-    public async Task InitializeAsync()
-    {
-        //var tessDataPath = Path.Combine(
-        //    FileSystem.Current.AppDataDirectory,
-        //    "TessData"
-        //);
-
-        //_engine = new TesseractEngine(
-        //    datapath: tessDataPath,
-        //    language: "eng+math",
-        //    engineMode: EngineMode.LstmOnly
-        //);
-    }
-
+    /// <summary>
+    /// Handles the file import button click.
+    /// </summary>
     private async void ReadFileOnImport(object? sender, EventArgs e)
 	{
-		var picker = await MediaPicker.PickPhotosAsync();
-		var fullPath = picker[0].FullPath;
-        using var stream = await picker[0].OpenReadAsync();
-        using var ocrInput = new OcrInput();
-        ocrInput.LoadImage(stream);
+        try
+        {
+            var fileData = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Select an equation file",
+                FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                {
+                    { DevicePlatform.iOS, new[] { "txt", "eq" } },
+                    { DevicePlatform.Android, new[] { "text/*", ".eq" } },
+                    { DevicePlatform.WinUI, new[] { ".txt", ".eq" } }
+                })
+            });
 
-        var ocrResult = await _ocrTesseract.ReadAsync(ocrInput);
-
-        SemanticScreenReader.Announce(ocrResult.Text);
+            if (fileData != null)
+            {
+                // TODO: Implement file reading and equation parsing
+                await DisplayAlert("Info", "File selection feature coming soon", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to pick file: {ex.Message}", "OK");
+        }
 	}
+
+    /// <summary>
+    /// Handles the Matrix Builder button click to navigate to the builder page.
+    /// </summary>
+    private async void OnMatrixBuilderClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var viewModel = Application.Current!.Handler!.MauiContext!.Services
+                .GetRequiredService<MatrixBuilderViewModel>();
+            var page = new MatrixBuilderPage(viewModel);
+            await Navigation.PushAsync(page);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Failed to open Matrix Builder: {ex.Message}", "OK");
+        }
+    }
 }

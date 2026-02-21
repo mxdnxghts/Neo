@@ -1,0 +1,56 @@
+[Neo Mobile App] Implement MAUI equation system builder with visual matrix interface
+
+Add complete mobile application for visually constructing and solving linear equation
+systems following the MVVM pattern with .NET MAUI.
+
+Key Features:
+- Visual equation builder with dynamic coefficient entry
+- Variable count picker (2-5 variables)
+- Real-time input validation with visual feedback
+- Add/remove equation rows dynamically
+- Integration with Neo.Core IEquationSolver service
+- Async solving with loading state management
+- Error handling and result display
+
+Architecture:
+- Views: MatrixBuilderPage with XAML UI
+- ViewModels: MatrixBuilderViewModel with CommunityToolkit.Mvvm
+- Models: EquationRow for equation data structure
+- Converters: IsValidDoubleConverter, InverseBoolConverter
+
+Implementation Details:
+- Use BindableLayout for dynamic coefficient entries
+- DataTrigger for validation highlighting (red background)
+- Task.Run for background solving operations
+- INotifyPropertyChanged for UI updates
+- Dependency injection for solver and view models
+
+Project Configuration:
+- NeoAndroidApp targets net10.0-windows10.0.19041.0
+- Neo.Core refactored to target net10.0 (cross-platform)
+- Removed legacy Xamarin files from Neo project
+- Fixed Windows App SDK PRI generation issues
+- Registered services in MauiProgram.CreateMauiApp()
+
+Documentation:
+- Added ARCHITECTURE.md with system design and component diagrams
+- Added IMPLEMENTATION.md with code examples and usage guide
+- Updated mobile-app.md with detailed implementation plan
+
+Files Added:
+- NeoAndroidApp/Views/MatrixBuilderPage.xaml(.cs)
+- NeoAndroidApp/ViewModels/MatrixBuilderViewModel.cs
+- NeoAndroidApp/Models/EquationRow.cs
+- NeoAndroidApp/Converters/MatrixBuilderConverters.cs
+- NeoAndroidApp/ARCHITECTURE.md
+- NeoAndroidApp/IMPLEMENTATION.md
+- mobile-app.md
+
+Files Modified:
+- NeoAndroidApp/MauiProgram.cs - DI configuration
+- NeoAndroidApp/MainPage.xaml(.cs) - Navigation to builder
+- NeoAndroidApp/AppShell.xaml.cs - Route registration
+- Neo/Neo/Neo.csproj - Target framework, removed Xamarin dependencies
+- Neo.sln - Solution structure updates
+
+Build Status: ✓ Succeeded (warnings: nullable references, XML docs)

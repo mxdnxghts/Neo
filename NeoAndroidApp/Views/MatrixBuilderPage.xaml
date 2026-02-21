@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:NeoAndroidApp"
+             xmlns:converters="clr-namespace:NeoAndroidApp.Converters"
+             xmlns:viewmodels="clr-namespace:NeoAndroidApp.ViewModels"
+             x:Class="NeoAndroidApp.Views.MatrixBuilderPage"
+             x:DataType="viewmodels:MatrixBuilderViewModel"
+             Title="Matrix Builder">
+
+    <ContentPage.Resources>
+        <converters:IsValidDoubleConverter x:Key="IsValidDoubleConverter" />
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Spacing="15" Padding="20">
+            
+            <!-- Variable count picker -->
+            <Frame BorderColor="#CCCCCC" Padding="15" CornerRadius="10">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Number of Variables"
+                           FontSize="16"
+                           FontAttributes="Bold"/>
+                    <Picker x:Name="VariablePicker"
+                            SelectedIndex="{Binding VariableCountIndex, Mode=TwoWay}"
+                            HorizontalOptions="Fill"
+                            BackgroundColor="#F5F5F5">
+                        <Picker.Items>
+                            <x:String>2</x:String>
+                            <x:String>3</x:String>
+                            <x:String>4</x:String>
+                            <x:String>5</x:String>
+                        </Picker.Items>
+                    </Picker>
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- Headers -->
+            <Frame BorderColor="#CCCCCC" Padding="15" CornerRadius="10">
+                <HorizontalStackLayout Spacing="10" HorizontalOptions="Fill">
+                    <Label Text="Coef." WidthRequest="50" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <HorizontalStackLayout Spacing="5" HorizontalOptions="FillAndExpand">
+                        <BindableLayout.ItemsSource>
+                            <Binding Path="VariableLabels" />
+                        </BindableLayout.ItemsSource>
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <Label Text="{Binding .}" 
+                                       WidthRequest="60" 
+                                       FontAttributes="Bold"
+                                       HorizontalOptions="Center"
+                                       HorizontalTextAlignment="Center"/>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </HorizontalStackLayout>
+                    <Label Text="=" WidthRequest="20" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="Const." WidthRequest="60" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label WidthRequest="40"/>
+                </HorizontalStackLayout>
+            </Frame>
+
+            <!-- Equations list -->
+            <CollectionView ItemsSource="{Binding Equations}">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="local:EquationRow">
+                        <Frame BorderColor="#DDDDDD" 
+                               Padding="10" 
+                               Margin="0,5" 
+                               CornerRadius="8"
+                               BackgroundColor="White">
+                            <HorizontalStackLayout Spacing="10" HorizontalOptions="Fill">
+                                <!-- Coefficient entries -->
+                                <HorizontalStackLayout Spacing="5" HorizontalOptions="FillAndExpand">
+                                    <BindableLayout.ItemsSource>
+                                        <Binding Path="Coefficients" />
+                                    </BindableLayout.ItemsSource>
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate>
+                                            <Entry Text="{Binding .}"
+                                                   Keyboard="Numeric"
+                                                   WidthRequest="60"
+                                                   HorizontalOptions="Center"
+                                                   BackgroundColor="#FAFAFA">
+                                                <Entry.Triggers>
+                                                    <DataTrigger TargetType="Entry"
+                                                                 Binding="{Binding ., Converter={StaticResource IsValidDoubleConverter}}"
+                                                                 Value="False">
+                                                        <Setter Property="BackgroundColor" Value="#FFDDDD"/>
+                                                        <Setter Property="TextColor" Value="Red"/>
+                                                    </DataTrigger>
+                                                </Entry.Triggers>
+                                            </Entry>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </HorizontalStackLayout>
+
+                                <!-- Equals sign -->
+                                <Label Text="=" 
+                                       VerticalOptions="Center" 
+                                       FontSize="18"
+                                       WidthRequest="20"
+                                       HorizontalOptions="Center"/>
+
+                                <!-- Constant entry -->
+                                <Entry Text="{Binding Constant}"
+                                       Keyboard="Numeric"
+                                       WidthRequest="70"
+                                       BackgroundColor="#FAFAFA"
+                                       HorizontalOptions="Center">
+                                    <Entry.Triggers>
+                                        <DataTrigger TargetType="Entry"
+                                                     Binding="{Binding Constant, Converter={StaticResource IsValidDoubleConverter}}"
+                                                     Value="False">
+                                            <Setter Property="BackgroundColor" Value="#FFDDDD"/>
+                                            <Setter Property="TextColor" Value="Red"/>
+                                        </DataTrigger>
+                                    </Entry.Triggers>
+                                </Entry>
+
+                                <!-- Delete button -->
+                                <Button Text="✖"
+                                        TextColor="White"
+                                        BackgroundColor="#DC3545"
+                                        CornerRadius="20"
+                                        WidthRequest="40"
+                                        HeightRequest="40"
+                                        FontSize="16"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MatrixBuilderViewModel}}, Path=RemoveEquationCommand}"
+                                        CommandParameter="{Binding .}"
+                                        HorizontalOptions="Center"
+                                        VerticalOptions="Center"/>
+                            </HorizontalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- Add equation button -->
+            <Button Text="+ Add Equation"
+                    Command="{Binding AddEquationCommand}"
+                    BackgroundColor="#28A745"
+                    TextColor="White"
+                    CornerRadius="10"
+                    HeightRequest="50"
+                    FontSize="16"/>
+
+            <!-- Solve button -->
+            <Button Text="Solve System"
+                    Command="{Binding SolveCommand}"
+                    IsEnabled="{Binding IsValid, Converter={StaticResource InverseBoolConverter}}"
+                    BackgroundColor="#007BFF"
+                    TextColor="White"
+                    CornerRadius="10"
+                    HeightRequest="50"
+                    FontSize="18"
+                    FontAttributes="Bold"/>
+
+            <!-- Activity indicator for busy state -->
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="#007BFF"
+                               HeightRequest="50"/>
+
+            <!-- Error message -->
+            <Frame BorderColor="#DC3545"
+                   BackgroundColor="#FFF5F5"
+                   Padding="15"
+                   CornerRadius="10"
+                   IsVisible="{Binding HasError}">
+                <Label Text="{Binding ErrorMessage}"
+                       TextColor="#DC3545"
+                       FontSize="14"
+                       LineBreakMode="WordWrap"/>
+            </Frame>
+
+            <!-- Result -->
+            <Frame BorderColor="#28A745"
+                   BackgroundColor="#F0FFF4"
+                   Padding="20"
+                   CornerRadius="10"
+                   IsVisible="{Binding ResultText, Converter={StaticResource IsValidDoubleConverter}, ConverterParameter=inverse}">
+                <Frame.Triggers>
+                    <DataTrigger TargetType="Frame"
+                                 Binding="{Binding ResultText}"
+                                 Value="">
+                        <Setter Property="IsVisible" Value="False"/>
+                    </DataTrigger>
+                </Frame.Triggers>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Solution:" 
+                           FontSize="18" 
+                           FontAttributes="Bold"
+                           TextColor="#28A745"/>
+                    <Label Text="{Binding ResultText}"
+                           FontSize="16"
+                           LineBreakMode="WordWrap"
+                           TextColor="#155724"/>
+                </VerticalStackLayout>
+            </Frame>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
