@@ -38,12 +38,12 @@ public partial class MainPage : ContentPage
             if (fileData != null)
             {
                 // TODO: Implement file reading and equation parsing
-                await DisplayAlert("Info", "File selection feature coming soon", "OK");
+                await DisplayAlertAsync("Info", "File selection feature coming soon", "OK");
             }
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Error", $"Failed to pick file: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"Failed to pick file: {ex.Message}", "OK");
         }
 	}
 
@@ -61,7 +61,7 @@ public partial class MainPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Error", $"Failed to open Matrix Builder: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"Failed to open Matrix Builder: {ex.Message}", "OK");
         }
     }
 }
