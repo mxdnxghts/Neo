@@ -2,6 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:NeoAndroidApp"
+             xmlns:models="clr-namespace:NeoAndroidApp.Models"
              xmlns:converters="clr-namespace:NeoAndroidApp.Converters"
              xmlns:viewmodels="clr-namespace:NeoAndroidApp.ViewModels"
              x:Class="NeoAndroidApp.Views.MatrixBuilderPage"
@@ -11,51 +12,63 @@
     <ContentPage.Resources>
         <converters:IsValidDoubleConverter x:Key="IsValidDoubleConverter" />
         <converters:InverseBoolConverter x:Key="InverseBoolConverter" />
+        <converters:StringIsEmptyConverter x:Key="StringIsEmptyConverter" />
+
+        <!-- Light theme colors -->
+        <Color x:Key="CardBackgroundLight">#FFFFFF</Color>
+        <Color x:Key="CardBorderLight">#CCCCCC</Color>
+        <Color x:Key="EntryBackgroundLight">#E8E8E8</Color>
+        <Color x:Key="ErrorBackgroundLight">#FFF5F5</Color>
+        <Color x:Key="ErrorBorderLight">#DC3545</Color>
+        <Color x:Key="ErrorTextLight">#DC3545</Color>
+        <Color x:Key="SuccessBackgroundLight">#F0FFF4</Color>
+        <Color x:Key="SuccessBorderLight">#28A745</Color>
+        <Color x:Key="SuccessTextLight">#155724</Color>
+        <Color x:Key="PrimaryTextLight">#000000</Color>
+
+        <!-- Dark theme colors -->
+        <Color x:Key="CardBackgroundDark">#2D2D2D</Color>
+        <Color x:Key="CardBorderDark">#404040</Color>
+        <Color x:Key="EntryBackgroundDark">#505050</Color>
+        <Color x:Key="ErrorBackgroundDark">#3D1F1F</Color>
+        <Color x:Key="ErrorBorderDark">#B71C1C</Color>
+        <Color x:Key="ErrorTextDark">#FFCDD2</Color>
+        <Color x:Key="SuccessBackgroundDark">#1B3320</Color>
+        <Color x:Key="SuccessBorderDark">#2E7D32</Color>
+        <Color x:Key="SuccessTextDark">#C8E6C9</Color>
+        <Color x:Key="PrimaryTextDark">#FFFFFF</Color>
     </ContentPage.Resources>
 
     <ScrollView>
         <VerticalStackLayout Spacing="15" Padding="20">
-            
-            <!-- Variable count picker -->
-            <Frame BorderColor="#CCCCCC" Padding="15" CornerRadius="10">
-                <VerticalStackLayout Spacing="10">
-                    <Label Text="Number of Variables"
-                           FontSize="16"
-                           FontAttributes="Bold"/>
-                    <Picker x:Name="VariablePicker"
-                            SelectedIndex="{Binding VariableCountIndex, Mode=TwoWay}"
-                            HorizontalOptions="Fill"
-                            BackgroundColor="#F5F5F5">
-                        <Picker.Items>
-                            <x:String>2</x:String>
-                            <x:String>3</x:String>
-                            <x:String>4</x:String>
-                            <x:String>5</x:String>
-                        </Picker.Items>
-                    </Picker>
-                </VerticalStackLayout>
-            </Frame>
 
             <!-- Headers -->
-            <Frame BorderColor="#CCCCCC" Padding="15" CornerRadius="10">
+            <Frame BorderColor="{AppThemeBinding Light={StaticResource CardBorderLight}, Dark={StaticResource CardBorderDark}}"
+                   Padding="15"
+                   CornerRadius="10"
+                   BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}">
                 <HorizontalStackLayout Spacing="10" HorizontalOptions="Fill">
-                    <Label Text="Coef." WidthRequest="50" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="Coef." WidthRequest="50" FontAttributes="Bold" HorizontalOptions="Center"
+                           TextColor="{AppThemeBinding Light={StaticResource PrimaryTextLight}, Dark={StaticResource PrimaryTextDark}}"/>
                     <HorizontalStackLayout Spacing="5" HorizontalOptions="FillAndExpand">
                         <BindableLayout.ItemsSource>
                             <Binding Path="VariableLabels" />
                         </BindableLayout.ItemsSource>
                         <BindableLayout.ItemTemplate>
                             <DataTemplate>
-                                <Label Text="{Binding .}" 
-                                       WidthRequest="60" 
+                                <Label Text="{Binding .}"
+                                       WidthRequest="60"
                                        FontAttributes="Bold"
                                        HorizontalOptions="Center"
-                                       HorizontalTextAlignment="Center"/>
+                                       HorizontalTextAlignment="Center"
+                                       TextColor="{AppThemeBinding Light={StaticResource PrimaryTextLight}, Dark={StaticResource PrimaryTextDark}}"/>
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </HorizontalStackLayout>
-                    <Label Text="=" WidthRequest="20" FontAttributes="Bold" HorizontalOptions="Center"/>
-                    <Label Text="Const." WidthRequest="60" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="=" WidthRequest="20" FontAttributes="Bold" HorizontalOptions="Center"
+                           TextColor="{AppThemeBinding Light={StaticResource PrimaryTextLight}, Dark={StaticResource PrimaryTextDark}}"/>
+                    <Label Text="Const." WidthRequest="60" FontAttributes="Bold" HorizontalOptions="Center"
+                           TextColor="{AppThemeBinding Light={StaticResource PrimaryTextLight}, Dark={StaticResource PrimaryTextDark}}"/>
                     <Label WidthRequest="40"/>
                 </HorizontalStackLayout>
             </Frame>
@@ -63,50 +76,75 @@
             <!-- Equations list -->
             <CollectionView ItemsSource="{Binding Equations}">
                 <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="local:EquationRow">
-                        <Frame BorderColor="#DDDDDD" 
-                               Padding="10" 
-                               Margin="0,5" 
+                    <DataTemplate x:DataType="models:EquationRow">
+                        <Frame BorderColor="{AppThemeBinding Light={StaticResource CardBorderLight}, Dark={StaticResource CardBorderDark}}"
+                               Padding="10"
+                               Margin="0,5"
                                CornerRadius="8"
-                               BackgroundColor="White">
+                               BackgroundColor="{AppThemeBinding Light={StaticResource CardBackgroundLight}, Dark={StaticResource CardBackgroundDark}}">
                             <HorizontalStackLayout Spacing="10" HorizontalOptions="Fill">
-                                <!-- Coefficient entries -->
-                                <HorizontalStackLayout Spacing="5" HorizontalOptions="FillAndExpand">
+                                <!-- Equation terms: coefficient + variable (e.g., "1x + 2y") -->
+                                <HorizontalStackLayout Spacing="2" HorizontalOptions="FillAndExpand">
                                     <BindableLayout.ItemsSource>
-                                        <Binding Path="Coefficients" />
+                                        <Binding Path="TermItems" />
                                     </BindableLayout.ItemsSource>
                                     <BindableLayout.ItemTemplate>
-                                        <DataTemplate>
-                                            <Entry Text="{Binding .}"
-                                                   Keyboard="Numeric"
-                                                   WidthRequest="60"
-                                                   HorizontalOptions="Center"
-                                                   BackgroundColor="#FAFAFA">
-                                                <Entry.Triggers>
-                                                    <DataTrigger TargetType="Entry"
-                                                                 Binding="{Binding ., Converter={StaticResource IsValidDoubleConverter}}"
-                                                                 Value="False">
-                                                        <Setter Property="BackgroundColor" Value="#FFDDDD"/>
-                                                        <Setter Property="TextColor" Value="Red"/>
-                                                    </DataTrigger>
-                                                </Entry.Triggers>
-                                            </Entry>
+                                        <DataTemplate x:DataType="models:EquationTermItem">
+                                            <HorizontalStackLayout Spacing="2" HorizontalOptions="Center">
+                                                <!-- Coefficient entry -->
+                                                <Entry Text="{Binding Coefficient}"
+                                                       Keyboard="Numeric"
+                                                       WidthRequest="50"
+                                                       HorizontalOptions="Center"
+                                                       VerticalOptions="Center"
+                                                       BackgroundColor="{AppThemeBinding Light={StaticResource EntryBackgroundLight}, Dark={StaticResource EntryBackgroundDark}}"
+                                                       TextColor="{AppThemeBinding Light={StaticResource PrimaryTextLight}, Dark={StaticResource PrimaryTextDark}}">
+                                                    <Entry.Triggers>
+                                                        <DataTrigger TargetType="Entry"
+                                                                     Binding="{Binding Coefficient, Converter={StaticResource IsValidDoubleConverter}}"
+                                                                     Value="False">
+                                                            <Setter Property="BackgroundColor" Value="#FFDDDD"/>
+                                                            <Setter Property="TextColor" Value="Red"/>
+                                                        </DataTrigger>
+                                                    </Entry.Triggers>
+                                                </Entry>
+                                                <!-- Variable label (x1, x2, etc.) -->
+                                                <Label Text="{Binding VariableLabel}"
+                                                       FontSize="14"
+                                                       VerticalOptions="Center"
+                                                       TextColor="{AppThemeBinding Light={StaticResource PrimaryTextLight}, Dark={StaticResource PrimaryTextDark}}"/>
+                                                <!-- Plus sign between terms (not after last) -->
+                                                <Label Text="+"
+                                                       FontSize="14"
+                                                       VerticalOptions="Center"
+                                                       TextColor="{AppThemeBinding Light={StaticResource PrimaryTextLight}, Dark={StaticResource PrimaryTextDark}}">
+                                                    <Label.Triggers>
+                                                        <DataTrigger TargetType="Label"
+                                                                     Binding="{Binding IsLast}"
+                                                                     Value="True">
+                                                            <Setter Property="IsVisible" Value="False"/>
+                                                        </DataTrigger>
+                                                    </Label.Triggers>
+                                                </Label>
+                                            </HorizontalStackLayout>
                                         </DataTemplate>
                                     </BindableLayout.ItemTemplate>
                                 </HorizontalStackLayout>
 
                                 <!-- Equals sign -->
-                                <Label Text="=" 
-                                       VerticalOptions="Center" 
+                                <Label Text="="
+                                       VerticalOptions="Center"
                                        FontSize="18"
-                                       WidthRequest="20"
-                                       HorizontalOptions="Center"/>
+                                       WidthRequest="25"
+                                       HorizontalOptions="Center"
+                                       TextColor="{AppThemeBinding Light={StaticResource PrimaryTextLight}, Dark={StaticResource PrimaryTextDark}}"/>
 
                                 <!-- Constant entry -->
                                 <Entry Text="{Binding Constant}"
                                        Keyboard="Numeric"
                                        WidthRequest="70"
-                                       BackgroundColor="#FAFAFA"
+                                       BackgroundColor="{AppThemeBinding Light={StaticResource EntryBackgroundLight}, Dark={StaticResource EntryBackgroundDark}}"
+                                       TextColor="{AppThemeBinding Light={StaticResource PrimaryTextLight}, Dark={StaticResource PrimaryTextDark}}"
                                        HorizontalOptions="Center">
                                     <Entry.Triggers>
                                         <DataTrigger TargetType="Entry"
@@ -148,7 +186,7 @@
             <!-- Solve button -->
             <Button Text="Solve System"
                     Command="{Binding SolveCommand}"
-                    IsEnabled="{Binding IsValid, Converter={StaticResource InverseBoolConverter}}"
+                    IsEnabled="{Binding IsValid}"
                     BackgroundColor="#007BFF"
                     TextColor="White"
                     CornerRadius="10"
@@ -163,39 +201,32 @@
                                HeightRequest="50"/>
 
             <!-- Error message -->
-            <Frame BorderColor="#DC3545"
-                   BackgroundColor="#FFF5F5"
+            <Frame BorderColor="{AppThemeBinding Light={StaticResource ErrorBorderLight}, Dark={StaticResource ErrorBorderDark}}"
+                   BackgroundColor="{AppThemeBinding Light={StaticResource ErrorBackgroundLight}, Dark={StaticResource ErrorBackgroundDark}}"
                    Padding="15"
                    CornerRadius="10"
                    IsVisible="{Binding HasError}">
                 <Label Text="{Binding ErrorMessage}"
-                       TextColor="#DC3545"
+                       TextColor="{AppThemeBinding Light={StaticResource ErrorTextLight}, Dark={StaticResource ErrorTextDark}}"
                        FontSize="14"
                        LineBreakMode="WordWrap"/>
             </Frame>
 
             <!-- Result -->
-            <Frame BorderColor="#28A745"
-                   BackgroundColor="#F0FFF4"
+            <Frame BorderColor="{AppThemeBinding Light={StaticResource SuccessBorderLight}, Dark={StaticResource SuccessBorderDark}}"
+                   BackgroundColor="{AppThemeBinding Light={StaticResource SuccessBackgroundLight}, Dark={StaticResource SuccessBackgroundDark}}"
                    Padding="20"
                    CornerRadius="10"
-                   IsVisible="{Binding ResultText, Converter={StaticResource IsValidDoubleConverter}, ConverterParameter=inverse}">
-                <Frame.Triggers>
-                    <DataTrigger TargetType="Frame"
-                                 Binding="{Binding ResultText}"
-                                 Value="">
-                        <Setter Property="IsVisible" Value="False"/>
-                    </DataTrigger>
-                </Frame.Triggers>
+                   IsVisible="{Binding ResultText, Converter={StaticResource StringIsEmptyConverter}, ConverterParameter=inverse}">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="Solution:" 
-                           FontSize="18" 
+                    <Label Text="Solution:"
+                           FontSize="18"
                            FontAttributes="Bold"
-                           TextColor="#28A745"/>
+                           TextColor="{AppThemeBinding Light={StaticResource SuccessTextLight}, Dark={StaticResource SuccessTextDark}}"/>
                     <Label Text="{Binding ResultText}"
                            FontSize="16"
                            LineBreakMode="WordWrap"
-                           TextColor="#155724"/>
+                           TextColor="{AppThemeBinding Light={StaticResource SuccessTextLight}, Dark={StaticResource SuccessTextDark}}"/>
                 </VerticalStackLayout>
             </Frame>
 

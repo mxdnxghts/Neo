@@ -15,31 +15,8 @@ namespace NeoAndroidApp.ViewModels;
 public partial class MatrixBuilderViewModel : ObservableObject
 {
     private readonly IEquationSolver _solver;
-    private readonly List<string> _variableOptions = new() { "2", "3", "4", "5" };
-
-    /// <summary>
-    /// Gets the list of variable count options (2-5).
-    /// </summary>
-    public List<string> VariableOptions => _variableOptions;
-
-    [ObservableProperty]
-    private int _variableCount = 2;
-
-    /// <summary>
-    /// Gets or sets the variable count index (0-based index for the picker).
-    /// Index 0 = 2 variables, Index 1 = 3 variables, etc.
-    /// </summary>
-    public int VariableCountIndex
-    {
-        get => VariableCount - 2;
-        set
-        {
-            if (value >= 0 && value < _variableOptions.Count)
-            {
-                VariableCount = value + 2;
-            }
-        }
-    }
+    private const int MinVariables = 2;
+    private const int MaxVariables = 6;
 
     [ObservableProperty]
     private ObservableCollection<EquationRow> _equations = new();
@@ -64,10 +41,20 @@ public partial class MatrixBuilderViewModel : ObservableObject
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
     /// <summary>
+    /// Gets the variable count (equals the number of equations).
+    /// </summary>
+    public int VariableCount => Equations.Count;
+
+    /// <summary>
     /// Gets the variable labels for display (x1, x2, etc.).
     /// </summary>
     public List<string> VariableLabels =>
         Enumerable.Range(0, VariableCount).Select(i => $"x{i + 1}").ToList();
+
+    /// <summary>
+    /// Gets a value indicating whether more equations can be added.
+    /// </summary>
+    public bool CanAddMoreEquations => Equations.Count < MaxVariables;
 
     /// <summary>
     /// Initializes a new instance of the MatrixBuilderViewModel.
@@ -80,59 +67,90 @@ public partial class MatrixBuilderViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Initializes the equations collection with one default equation.
+    /// Initializes the equations collection with 2 default equations (minimum).
     /// </summary>
     private void InitializeEquations()
     {
         Equations.Clear();
-        Equations.Add(new EquationRow(VariableCount));
+        for (int i = 0; i < MinVariables; i++)
+        {
+            Equations.Add(new EquationRow(MinVariables));
+        }
         OnPropertyChanged(nameof(IsValid));
-    }
-
-    /// <summary>
-    /// Updates all equation rows when the variable count changes.
-    /// </summary>
-    partial void OnVariableCountChanged(int value)
-    {
-        foreach (var equation in Equations)
-            equation.UpdateCoefficientCount(value);
-
         OnPropertyChanged(nameof(VariableLabels));
-        OnPropertyChanged(nameof(IsValid));
+        OnPropertyChanged(nameof(CanAddMoreEquations));
     }
 
     /// <summary>
-    /// Adds a new equation row with default values.
+    /// Called when equations collection changes to sync coefficient values.
     /// </summary>
-    [RelayCommand]
-    private void AddEquation()
+    partial void OnEquationsChanged(ObservableCollection<EquationRow> value)
     {
-        Equations.Add(new EquationRow(VariableCount));
         OnPropertyChanged(nameof(IsValid));
+        OnPropertyChanged(nameof(CanSolve));
+        OnPropertyChanged(nameof(VariableLabels));
+        OnPropertyChanged(nameof(CanAddMoreEquations));
         ClearError();
     }
 
     /// <summary>
-    /// Removes the specified equation row.
+    /// Adds a new equation row with default values.
+    /// Also adds a new variable to all existing equations.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanAddMoreEquations))]
+    private void AddEquation()
+    {
+        if (Equations.Count >= MaxVariables)
+            return;
+
+        int newVariableCount = Equations.Count + 1;
+
+        // Update all existing equations to have the new variable
+        foreach (var equation in Equations)
+        {
+            equation.UpdateCoefficientCount(newVariableCount);
+        }
+
+        // Add new equation with the new variable count
+        Equations.Add(new EquationRow(newVariableCount));
+        
+        OnPropertyChanged(nameof(IsValid));
+        OnPropertyChanged(nameof(VariableLabels));
+        OnPropertyChanged(nameof(CanAddMoreEquations));
+        ClearError();
+    }
+
+    /// <summary>
+    /// Removes the specified equation row and reduces variable count.
     /// </summary>
     /// <param name="equation">The equation row to remove.</param>
     [RelayCommand(CanExecute = nameof(CanRemoveEquation))]
     private void RemoveEquation(EquationRow equation)
     {
-        if (equation != null && Equations.Count > 1)
+        if (equation != null && Equations.Count > MinVariables)
         {
             Equations.Remove(equation);
+            
+            // Update all remaining equations to have one less variable
+            int newVariableCount = Equations.Count;
+            foreach (var eq in Equations)
+            {
+                eq.UpdateCoefficientCount(newVariableCount);
+            }
+            
             OnPropertyChanged(nameof(IsValid));
+            OnPropertyChanged(nameof(VariableLabels));
+            OnPropertyChanged(nameof(CanAddMoreEquations));
             ClearError();
         }
     }
 
     /// <summary>
-    /// Determines if an equation can be removed (more than one equation exists).
+    /// Determines if an equation can be removed (more than minimum equations exist).
     /// </summary>
     /// <param name="equation">The equation to check.</param>
-    /// <returns>True if more than one equation exists.</returns>
-    private bool CanRemoveEquation(EquationRow equation) => Equations.Count > 1;
+    /// <returns>True if more than minimum equations exist.</returns>
+    private bool CanRemoveEquation(EquationRow equation) => Equations.Count > MinVariables;
 
     /// <summary>
     /// Validates all equations and returns true if all are valid.
@@ -145,6 +163,7 @@ public partial class MatrixBuilderViewModel : ObservableObject
 
     /// <summary>
     /// Builds the equation string from the current input.
+    /// Empty strings are treated as 0.
     /// </summary>
     /// <returns>The formatted equation string.</returns>
     private string BuildEquationString()
@@ -157,17 +176,31 @@ public partial class MatrixBuilderViewModel : ObservableObject
 
             for (int i = 0; i < equation.Coefficients.Count; i++)
             {
-                if (double.TryParse(equation.Coefficients[i], NumberStyles.Any, 
-                    CultureInfo.InvariantCulture, out var coeff))
-                {
-                    var term = FormatTerm(coeff, i);
-                    if (!string.IsNullOrEmpty(term))
-                        terms.Add(term);
-                }
+                // Empty string is treated as 0
+                var coeffText = equation.Coefficients[i];
+                var coeff = string.IsNullOrEmpty(coeffText) ? 0.0 : 
+                    double.TryParse(coeffText, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed) 
+                        ? parsed 
+                        : 0.0;
+                
+                var term = FormatTerm(coeff, i);
+                if (!string.IsNullOrEmpty(term))
+                    terms.Add(term);
             }
 
-            var constant = equation.Constant;
-            if (double.TryParse(constant, NumberStyles.Any, CultureInfo.InvariantCulture, out _))
+            // Empty constant is treated as 0
+            var constantText = equation.Constant;
+            var constant = string.IsNullOrEmpty(constantText) ? 0.0 :
+                double.TryParse(constantText, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsedConst)
+                    ? parsedConst
+                    : 0.0;
+            
+            // Handle case where all coefficients are zero
+            if (terms.Count == 0)
+            {
+                rows.Add($"0 = {constant}");
+            }
+            else
             {
                 rows.Add($"{string.Join(" ", terms)} = {constant}");
             }
@@ -178,18 +211,20 @@ public partial class MatrixBuilderViewModel : ObservableObject
 
     /// <summary>
     /// Formats a single term (coefficient * variable).
+    /// Empty strings are treated as 0.
     /// </summary>
     /// <param name="coeff">The coefficient value.</param>
     /// <param name="varIndex">The variable index (0-based).</param>
     /// <returns>The formatted term string.</returns>
     private string FormatTerm(double coeff, int varIndex)
     {
+        // Skip zero coefficients
         if (Math.Abs(coeff) < 1e-10)
             return string.Empty;
 
         var sign = coeff >= 0 ? "+" : "-";
         var abs = Math.Abs(coeff);
-        
+
         var coeffStr = abs switch
         {
             1 => "",
@@ -283,15 +318,5 @@ public partial class MatrixBuilderViewModel : ObservableObject
     private void ClearError()
     {
         ErrorMessage = string.Empty;
-    }
-
-    /// <summary>
-    /// Called when any equation property changes to revalidate.
-    /// </summary>
-    partial void OnEquationsChanged(ObservableCollection<EquationRow> value)
-    {
-        OnPropertyChanged(nameof(IsValid));
-        OnPropertyChanged(nameof(CanSolve));
-        ClearError();
     }
 }
