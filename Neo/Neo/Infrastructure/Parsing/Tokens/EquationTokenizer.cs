@@ -22,15 +22,6 @@ public ref struct EquationTokenizer
         _tokenCount = 0;
     }
 
-    // Stack-allocated version for small inputs
-    public EquationTokenizer(ReadOnlySpan<char> input)
-    {
-        _input = input;
-        _position = 0;
-        _tokenSpan = stackalloc TokenInfo[64];
-        _tokenCount = 0;
-    }
-
     public ReadOnlySpan<TokenInfo> Tokenize()
     {
         while (_position < _input.Length && _tokenCount < _tokenSpan.Length)
