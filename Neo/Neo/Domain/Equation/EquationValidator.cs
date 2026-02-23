@@ -1,10 +1,7 @@
-﻿using Neo.Domain.Equation.Variables;
-using Neo.Domain.Result;
+﻿using Neo.Domain.Result;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Neo.Domain.Equation;
 
@@ -86,4 +83,3 @@ public static class EquationValidator
 }
 
 // Builder pattern for complex equation systems
-

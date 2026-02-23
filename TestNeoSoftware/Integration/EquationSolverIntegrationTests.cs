@@ -2,14 +2,10 @@ using Neo.Application.Caching;
 using Neo.Application.Solver.Equation;
 using Neo.Application.Solver.Matrix;
 using Neo.Application.Validators;
-using Neo.Domain.Equation;
 using Neo.Domain.Equation.Variables;
-using Neo.Domain.Result;
-using Neo.Domain.Solution;
 using Neo.Infrastructure.Integration;
 using Neo.Infrastructure.Matrix;
 using Neo.Infrastructure.Parsing;
-using FluentAssertions;
 
 namespace TestNeoSoftware.Integration;
 
@@ -17,6 +13,7 @@ namespace TestNeoSoftware.Integration;
 /// Base class for integration tests providing real implementations of all dependencies.
 /// </summary>
 #pragma warning disable NUnit1032 // Field should be disposed in TearDown
+
 public class EquationSolverIntegrationTestBase
 {
     protected IEquationParser Parser = null!;
@@ -45,7 +42,8 @@ public class EquationSolverIntegrationTestBase
     public void TearDown()
     {
         // Clean up disposable resources (cast to concrete type for Dispose)
-        if (Converter is MatrixConverter mc) mc.Dispose();
+        if (Converter is MatrixConverter mc)
+            mc.Dispose();
     }
 }
 
@@ -105,7 +103,8 @@ public class EquationParserIntegrationTests
         var result = _parser.Parse("2x+3y=5; x-y=1");
 
         // Debug
-        if (result.IsFailure) System.Console.WriteLine($"Parser Error: {result.Error?.Code} - {result.Error?.Message}");
+        if (result.IsFailure)
+            System.Console.WriteLine($"Parser Error: {result.Error?.Code} - {result.Error?.Message}");
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -146,7 +145,8 @@ public class EquationParserIntegrationTests
         var result = _parser.Parse("-x = 2");
 
         // Debug
-        if (result.IsFailure) System.Console.WriteLine($"Parser Error: {result.Error?.Code} - {result.Error?.Message}");
+        if (result.IsFailure)
+            System.Console.WriteLine($"Parser Error: {result.Error?.Code} - {result.Error?.Message}");
 
         // Assert
         result.IsSuccess.Should().BeTrue();

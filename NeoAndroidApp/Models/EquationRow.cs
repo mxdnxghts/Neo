@@ -1,6 +1,6 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace NeoAndroidApp.Models;
 
@@ -55,7 +55,7 @@ public partial class EquationRow : ObservableObject
         {
             // Update IsLast for all terms when collection changes
             UpdateTermIsLastFlags();
-            
+
             if (e.NewItems != null && e.NewStartingIndex >= 0 && e.NewStartingIndex < TermItems.Count)
             {
                 // Sync new coefficient to term item
@@ -133,7 +133,7 @@ public partial class EquationRow : ObservableObject
             if (TermItems.Count > 0)
                 TermItems[TermItems.Count - 1].IsLast = true;
         }
-        
+
         OnPropertyChanged(nameof(IsLastTerm));
     }
 
@@ -147,13 +147,13 @@ public partial class EquationRow : ObservableObject
         foreach (var coeff in Coefficients)
         {
             // Empty string is treated as 0 (valid)
-            if (!string.IsNullOrEmpty(coeff) && 
+            if (!string.IsNullOrEmpty(coeff) &&
                 !double.TryParse(coeff, NumberStyles.Any, CultureInfo.InvariantCulture, out _))
                 return false;
         }
 
         // Empty constant is treated as 0 (valid)
-        return string.IsNullOrEmpty(Constant) || 
+        return string.IsNullOrEmpty(Constant) ||
                double.TryParse(Constant, NumberStyles.Any, CultureInfo.InvariantCulture, out _);
     }
 }

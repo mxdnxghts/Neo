@@ -1,11 +1,4 @@
 ﻿using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Neo.Infrastructure.Parsing.Tokens;
 
@@ -34,7 +27,7 @@ public ref struct EquationTokenizer
     {
         _input = input;
         _position = 0;
-        //_tokenSpan = stackalloc TokenInfo[64];
+        _tokenSpan = stackalloc TokenInfo[64];
         _tokenCount = 0;
     }
 
@@ -234,5 +227,6 @@ public ref struct EquationTokenizer
     }
 
     private static bool IsDigit(char c) => c >= '0' && c <= '9';
+
     private static bool IsVariableStart(char c) => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }

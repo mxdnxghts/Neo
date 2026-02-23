@@ -51,13 +51,13 @@ Dependencies point **inward**: the Application layer depends only on Domain and 
 
 - **`Variable`** – Value object representing a variable name (e.g., "x"). Immutable, equatable.
 - **`Coefficient`** – Value object pairing a `double` value with a `Variable`.
-- **`LinearEquation`** – Entity containing a dictionary of `Variable` → coefficient, and a constant term.  
-  - Validates that at least one coefficient is non‑zero.  
-  - Provides methods like `GetCoefficient`, `HasVariable`, `WithZeroCoefficient` (used during normalisation).  
+- **`LinearEquation`** – Entity containing a dictionary of `Variable` → coefficient, and a constant term.
+  - Validates that at least one coefficient is non‑zero.
+  - Provides methods like `GetCoefficient`, `HasVariable`, `WithZeroCoefficient` (used during normalisation).
   - Implements `IEquatable<LinearEquation>`.
-- **`EquationSystem`** – Collection of `LinearEquation` objects.  
-  - Exposes `Variables` (distinct variables ordered by appearance).  
-  - `Normalize()` adds missing variables with coefficient 0 to every equation.  
+- **`EquationSystem`** – Collection of `LinearEquation` objects.
+  - Exposes `Variables` (distinct variables ordered by appearance).
+  - `Normalize()` adds missing variables with coefficient 0 to every equation.
   - `ToMatrix()` converts the system to `(double[,] coefficients, double[] constants)` for further processing.
 - **`Solution`** – Result of solving a system. Contains status (`Success`, `NoSolution`, `InfiniteSolutions`, `Error`), dictionary of variable → value, and metadata.
 - **`Result<T>`** – Functional error‑handling type with `IsSuccess`, `Value`, and `Error` (record with code, message, exception). Used throughout to avoid exceptions for expected failures.
@@ -81,8 +81,8 @@ Dependencies point **inward**: the Application layer depends only on Domain and 
   Result<Solution> SolveWithOptions(string input, SolvingOptions options);
   Result<Solution> SolveWithAlgorithm(string input, SolvingAlgorithm algorithm);
   ```
-- **`EquationSolver`** – Concrete implementation of `IEquationSolver`.  
-  - Injected dependencies: `IEquationParser`, `IMatrixConverter`, `IMatrixSolver`, `ISolutionValidator`, `IEquationCache`, `PerformanceMonitor`, `SolvingOptions`.  
+- **`EquationSolver`** – Concrete implementation of `IEquationSolver`.
+  - Injected dependencies: `IEquationParser`, `IMatrixConverter`, `IMatrixSolver`, `ISolutionValidator`, `IEquationCache`, `PerformanceMonitor`, `SolvingOptions`.
   - Handles caching (via hash of input), parsing, matrix conversion, algorithm selection, solving, validation, and result packaging.
 - **`SolvingOptions`** – Configuration record with properties: `EnableCaching`, `CacheTtl`, `DefaultAlgorithm`, `ValidationTolerance`, `MaxDegreeOfParallelism`.
 - **`SolvingAlgorithm`** – Enum: `LU`, `QR`, `Cholesky`, `SVD`.
@@ -97,44 +97,44 @@ Dependencies point **inward**: the Application layer depends only on Domain and 
 #### 2.3.1 Parsing
 
 - **`IEquationParser`** – Interface (defined in Application or a separate Contracts project).
-- **`EquationParser`** – High‑performance parser using `Span<T>`, `stackalloc`, and `ArrayPool`.  
-  - Uses a custom **tokenizer** (`EquationTokenizer`, ref struct) that produces `TokenInfo` structs (type, start, length).  
-  - Adaptive token buffer: stack‑allocated for up to 128 tokens, falls back to pooled array for larger inputs.  
-  - Parses tokens into an `EquationSystem`, handling signs, implicit coefficients (1 or -1), left‑side constants, and repeated variables (coefficients summed).  
+- **`EquationParser`** – High‑performance parser using `Span<T>`, `stackalloc`, and `ArrayPool`.
+  - Uses a custom **tokenizer** (`EquationTokenizer`, ref struct) that produces `TokenInfo` structs (type, start, length).
+  - Adaptive token buffer: stack‑allocated for up to 128 tokens, falls back to pooled array for larger inputs.
+  - Parses tokens into an `EquationSystem`, handling signs, implicit coefficients (1 or -1), left‑side constants, and repeated variables (coefficients summed).
   - Returns `Result<EquationSystem>`.
 
 #### 2.3.2 Matrix Conversion
 
 - **`IMatrixConverter`** – Interface (Application layer).
-- **`PooledMatrixConverter`** – Converts an `EquationSystem` to MathNet matrices using `ArrayPool<double>` to minimise allocations.  
-  - Uses `Parallel.For` for large systems to fill arrays concurrently.  
+- **`PooledMatrixConverter`** – Converts an `EquationSystem` to MathNet matrices using `ArrayPool<double>` to minimise allocations.
+  - Uses `Parallel.For` for large systems to fill arrays concurrently.
   - Returns `Result<Matrix<double>>` and `Result<Vector<double>>`.
 
 #### 2.3.3 Linear Algebra Solving
 
 - **`IMatrixSolver`** – Interface (Application layer).
-- **`MathNetMatrixSolver`** – Wraps MathNet.Numerics methods.  
-  - Provides `SolveLU`, `SolveQR`, `SolveCholesky`, `SolveSVD`.  
-  - `ConditionNumber` method using SVD.  
+- **`MathNetMatrixSolver`** – Wraps MathNet.Numerics methods.
+  - Provides `SolveLU`, `SolveQR`, `SolveCholesky`, `SolveSVD`.
+  - `ConditionNumber` method using SVD.
   - Returns `Result<Vector<double>>` with detailed error on singular or ill‑conditioned matrices.
 
 #### 2.3.4 Solution Validation
 
 - **`ISolutionValidator`** – Interface (Application layer).
-- **`SolutionValidator`** – Computes residuals `Ax - b` and checks against tolerance.  
-  - `DetermineStatus` uses rank comparison (via `a.Append(b.ToColumnMatrix()).Rank()`) to classify system as no solution, infinite solutions, or unique.  
+- **`SolutionValidator`** – Computes residuals `Ax - b` and checks against tolerance.
+  - `DetermineStatus` uses rank comparison (via `a.Append(b.ToColumnMatrix()).Rank()`) to classify system as no solution, infinite solutions, or unique.
   - Returns `Result<bool>` indicating validity.
 
 #### 2.3.5 Caching
 
 - **`IEquationCache`** – Interface (Application layer).
-- **`MemoryEquationCache`** – In‑memory cache with expiration. Uses `ConcurrentDictionary` and a simple `CacheEntry` record with expiry.  
+- **`MemoryEquationCache`** – In‑memory cache with expiration. Uses `ConcurrentDictionary` and a simple `CacheEntry` record with expiry.
 - **`NullEquationCache`** – No‑op implementation for when caching is disabled.
 
 #### 2.3.6 Performance Monitoring
 
-- **`PerformanceMonitor`** – Concrete class (could implement an interface).  
-  - Tracks operation durations, success rates, and statistics via `ConcurrentDictionary`.  
+- **`PerformanceMonitor`** – Concrete class (could implement an interface).
+  - Tracks operation durations, success rates, and statistics via `ConcurrentDictionary`.
   - Provides `IDisposable` `StartActivity` to measure scoped operations.
 
 **Dependencies:** Application abstractions, MathNet.Numerics, and .NET runtime libraries. No dependencies on other infrastructure components (they are composed via DI).

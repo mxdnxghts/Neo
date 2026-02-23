@@ -1,5 +1,5 @@
 using Neo.Domain.Result;
-using FluentAssertions;
+
 using ResultNS = Neo.Domain.Result;
 
 namespace TestNeoSoftware.Domain.Result;

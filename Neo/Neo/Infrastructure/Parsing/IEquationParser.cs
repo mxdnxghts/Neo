@@ -40,4 +40,3 @@ public interface ISpanEquationParser
     /// <returns>A <see cref="Result{T}"/> containing the parsed system or error.</returns>
     Result<EquationSystem> Parse(ReadOnlySpan<char> input);
 }
-

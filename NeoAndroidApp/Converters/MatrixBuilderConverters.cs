@@ -87,11 +87,11 @@ public class StringIsEmptyConverter : IValueConverter
         if (value is string str)
         {
             bool isEmpty = string.IsNullOrEmpty(str);
-            
+
             // Check for inverse parameter
             if (parameter is string param && param == "inverse")
                 return !isEmpty;
-            
+
             return isEmpty;
         }
 

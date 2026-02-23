@@ -1,6 +1,5 @@
 using Neo.Domain.Equation;
 using Neo.Domain.Equation.Variables;
-using FluentAssertions;
 
 namespace TestNeoSoftware.Domain.Equation;
 

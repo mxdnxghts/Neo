@@ -1,4 +1,3 @@
-using System;
 using Microsoft.Extensions.DependencyInjection;
 using Neo.Application.Caching;
 using Neo.Application.Solver.Equation;
@@ -7,6 +6,7 @@ using Neo.Application.Validators;
 using Neo.Infrastructure.Integration;
 using Neo.Infrastructure.Matrix;
 using Neo.Infrastructure.Parsing;
+using System;
 
 namespace Neo.CompositionRoot;
 

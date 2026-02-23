@@ -1,7 +1,6 @@
 ﻿using Android.App;
 using Android.Content.PM;
 using Android.OS;
-using Microsoft.Maui.Controls;
 
 namespace NeoAndroidApp;
 
@@ -14,6 +13,7 @@ public class MainActivity : MauiAppCompatActivity
     {
         base.OnCreate(savedInstanceState);
     }
+
     public override void OnConfigurationChanged(Android.Content.Res.Configuration newConfig)
     {
         base.OnConfigurationChanged(newConfig);

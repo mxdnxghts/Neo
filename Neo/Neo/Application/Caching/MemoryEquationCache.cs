@@ -1,6 +1,6 @@
 ﻿using Neo.Domain.Equation;
-using Neo.Domain.Solution;
 using Neo.Domain.Result;
+using Neo.Domain.Solution;
 using System;
 using System.Collections.Concurrent;
 

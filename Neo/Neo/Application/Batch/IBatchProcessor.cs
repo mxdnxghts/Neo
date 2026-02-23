@@ -8,11 +8,10 @@ using System.Threading.Tasks;
 
 namespace Neo.Application.Batch;
 
-
-
 public interface IBatchProcessor
 {
     IObservable<BatchProgress> Progress { get; }
+
     Task<IReadOnlyList<Result<Solution>>> ProcessAsync(
         IEnumerable<EquationSystem> systems,
         int maxDegreeOfParallelism = -1,

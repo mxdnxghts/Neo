@@ -2,7 +2,6 @@ using Neo.Application.Caching;
 using Neo.Domain.Equation;
 using Neo.Domain.Equation.Variables;
 using Neo.Domain.Solution;
-using FluentAssertions;
 
 namespace TestNeoSoftware.Application.Caching;
 
@@ -17,7 +16,7 @@ public class MemoryEquationCacheTests
     public void SetUp()
     {
         _cache = new MemoryEquationCache();
-        
+
         var x = Variable.Create("x");
         var equations = new[]
         {
@@ -182,7 +181,7 @@ public class NullEquationCacheTests
     public void SetUp()
     {
         _cache = new NullEquationCache();
-        
+
         var x = Variable.Create("x");
         var equations = new[]
         {

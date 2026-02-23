@@ -7,7 +7,7 @@ namespace Neo.Domain.Equation;
 
 /// <summary>
 /// Represents a system of linear equations.
-/// Example: 
+/// Example:
 ///   2x + 3y = 5
 ///   x - y = 1
 /// </summary>

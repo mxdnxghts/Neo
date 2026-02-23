@@ -1,7 +1,7 @@
-﻿using Neo.Domain.Equation;
-using Neo.Domain.Solution;
-using MathNet.Numerics.LinearAlgebra;
+﻿using MathNet.Numerics.LinearAlgebra;
+using Neo.Domain.Equation;
 using Neo.Domain.Result;
+using Neo.Domain.Solution;
 
 namespace Neo.Application.Validators;
 
@@ -42,7 +42,7 @@ public sealed class SolutionValidator : ISolutionValidator
         var augmentedMatrix = a.Append(b.ToColumnMatrix());
         if (augmentedMatrix == null)
             return SolutionStatus.Error;
-            
+
         var rankA = a.Rank();
         var rankAug = augmentedMatrix.Rank();
 

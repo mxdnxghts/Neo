@@ -1,12 +1,13 @@
-﻿using System;
+﻿using Dapper;
+using FluentResults;
+using Npgsql;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Dapper;
-using FluentResults;
-using Npgsql;
 
 namespace Neo.Storage;
+
 public sealed class StorageHandler(string connectionString)
 {
     public async Task<Result> SaveAsync(string result)
@@ -24,11 +25,12 @@ public sealed class StorageHandler(string connectionString)
         var exec = await connection.ExecuteAsync(sql, new
         {
             id = matrixResult.Id,
-            result = matrixResult.Result 
+            result = matrixResult.Result
         });
 
         return exec == 1 ? Result.Ok() : Result.Fail("Failed to save");
     }
+
     public Result Save(string result)
     {
         using var connection = new NpgsqlConnection(connectionString);
@@ -44,7 +46,7 @@ public sealed class StorageHandler(string connectionString)
         var exec = connection.Execute(sql, new
         {
             id = matrixResult.Id,
-            result = matrixResult.Result 
+            result = matrixResult.Result
         });
 
         return exec == 1 ? Result.Ok() : Result.Fail("Failed to save");

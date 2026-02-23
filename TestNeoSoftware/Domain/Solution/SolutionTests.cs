@@ -1,7 +1,6 @@
 using Neo.Domain.Equation;
 using Neo.Domain.Equation.Variables;
 using NeoDomainSolution = Neo.Domain.Solution;
-using FluentAssertions;
 
 namespace TestNeoSoftware.Domain.Solution;
 

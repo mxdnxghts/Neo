@@ -1,5 +1,4 @@
 using Neo.Infrastructure.Integration;
-using FluentAssertions;
 
 namespace TestNeoSoftware.Infrastructure.Integration;
 

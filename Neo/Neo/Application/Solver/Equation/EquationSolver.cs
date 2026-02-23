@@ -311,9 +311,8 @@ public sealed class EquationSolver : IEquationSolver
     /// <returns>Base64-encoded hash.</returns>
     private static string ComputeHash(string input)
     {
-        using var sha = SHA256.Create();
         var bytes = Encoding.UTF8.GetBytes(input.Trim().ToLowerInvariant());
-        var hash = sha.ComputeHash(bytes);
+        var hash = SHA256.HashData(bytes);
         return Convert.ToBase64String(hash);
     }
 
