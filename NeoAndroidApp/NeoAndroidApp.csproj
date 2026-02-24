@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
 
     <!-- Display name -->
-    <ApplicationTitle>NeoAndroidApp</ApplicationTitle>
+    <ApplicationTitle>Neo</ApplicationTitle>
 
     <!-- App Identifier -->
     <ApplicationId>com.companyname.neoandroidapp</ApplicationId>
@@ -28,6 +28,16 @@
     <AndroidUseSharedRuntime Condition="'$(Configuration)' == 'Debug'">true</AndroidUseSharedRuntime>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <AndroidKeyStore>false</AndroidKeyStore>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <ApplicationTitle>Neo</ApplicationTitle>
+    <ApplicationId>com.mxdnxghts.neo</ApplicationId>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <ApplicationTitle>Neo</ApplicationTitle>
+    <ApplicationId>com.mxdnxghts.neo</ApplicationId>
   </PropertyGroup>
 
   <ItemGroup>

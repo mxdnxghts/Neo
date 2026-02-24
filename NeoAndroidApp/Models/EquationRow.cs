@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Reflection.Metadata;
 
 namespace NeoAndroidApp.Models;
 
@@ -10,6 +11,7 @@ namespace NeoAndroidApp.Models;
 /// </summary>
 public partial class EquationRow : ObservableObject
 {
+    private readonly List<string> _variableNames = [ "x", "y", "z", "w", "v", "u" ];
     /// <summary>
     /// Gets the collection of coefficient values (as strings for two-way binding).
     /// Each entry corresponds to a variable (x1, x2, etc.).
@@ -43,11 +45,9 @@ public partial class EquationRow : ObservableObject
     {
         for (int i = 0; i < variableCount; i++)
         {
-            var term = new EquationTermItem { VariableLabel = $"x{i + 1}", IsLast = (i == variableCount - 1) };
-            term.PropertyChanged += Term_PropertyChanged;
-            Coefficients.Add(string.Empty);
-            VariableLabels.Add($"x{i + 1}");
-            TermItems.Add(term);
+            var variableName = _variableNames[i];
+            var term = new EquationTermItem { VariableLabel = variableName, IsLast = i == variableCount - 1 };
+            AddEquationTerm(term, variableName, i);
         }
 
         // Subscribe to collection changes to sync coefficients with term items and update IsLast
@@ -110,11 +110,9 @@ public partial class EquationRow : ObservableObject
             // Add new coefficients with empty strings and variable labels
             for (int i = currentCount; i < newCount; i++)
             {
-                var newTerm = new EquationTermItem { VariableLabel = $"x{i + 1}", IsLast = false };
-                newTerm.PropertyChanged += Term_PropertyChanged;
-                Coefficients.Add(string.Empty);
-                VariableLabels.Add($"x{i + 1}");
-                TermItems.Add(newTerm);
+                var variableName = _variableNames[i];
+                var newTerm = new EquationTermItem { VariableLabel = variableName, IsLast = false };
+                AddEquationTerm(newTerm, variableName, i);
             }
             // Update last item
             if (TermItems.Count > 0)
@@ -155,6 +153,14 @@ public partial class EquationRow : ObservableObject
         // Empty constant is treated as 0 (valid)
         return string.IsNullOrEmpty(Constant) ||
                double.TryParse(Constant, NumberStyles.Any, CultureInfo.InvariantCulture, out _);
+    }
+
+    private void AddEquationTerm(EquationTermItem term, string variableName, int index)
+    {
+        term.PropertyChanged += Term_PropertyChanged;
+        Coefficients.Add(string.Empty);
+        VariableLabels.Add(variableName);
+        TermItems.Add(term);
     }
 }
 

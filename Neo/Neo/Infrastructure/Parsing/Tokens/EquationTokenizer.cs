@@ -5,7 +5,7 @@ namespace Neo.Infrastructure.Parsing.Tokens;
 // Ref struct tokenizer that returns lightweight TokenInfo array
 public ref struct EquationTokenizer
 {
-    private ReadOnlySpan<char> _input;
+    private readonly ReadOnlySpan<char> _input;
     private int _position;
     private TokenInfo[] _tokenBuffer;
     private int _tokenCount;

@@ -103,32 +103,29 @@ public sealed class MatrixConverter : IMatrixConverter, IDisposable
         {
             Parallel.For(0, system.EquationCount, i =>
             {
-                var equation = system.Equations[i];
-                var rowStart = i * system.VariableCount;
-
-                for (int j = 0; j < system.VariableCount; j++)
-                {
-                    coefficientArray[rowStart + j] = equation.GetCoefficient(system.Variables[j]);
-                }
-
-                constantArray[i] = equation.Constant;
+                FillArray(system, i, coefficientArray, constantArray);
             });
         }
         else
         {
             for (int i = 0; i < system.EquationCount; i++)
             {
-                var equation = system.Equations[i];
-                var rowStart = i * system.VariableCount;
-
-                for (int j = 0; j < system.VariableCount; j++)
-                {
-                    coefficientArray[rowStart + j] = equation.GetCoefficient(system.Variables[j]);
-                }
-
-                constantArray[i] = equation.Constant;
+                FillArray(system, i, coefficientArray, constantArray);
             }
         }
+    }
+
+    private void FillArray(EquationSystem system, int equationIndex, double[] coefficientArray, double[] constantArray)
+    {
+        var equation = system.Equations[equationIndex];
+        var rowStart = equationIndex * system.VariableCount;
+
+        for (int j = 0; j < system.VariableCount; j++)
+        {
+            coefficientArray[rowStart + j] = equation.GetCoefficient(system.Variables[j]);
+        }
+
+        constantArray[equationIndex] = equation.Constant;
     }
 
     /// <summary>
