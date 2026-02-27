@@ -1,5 +1,6 @@
 ﻿using Neo.Domain.Equation;
 using Neo.Domain.Equation.Variables;
+using Neo.Application.Solver.Equation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,6 +38,13 @@ public sealed class Solution
     /// Gets the UTC timestamp when the solution was computed.
     /// </summary>
     public DateTime SolvedAt { get; }
+
+    /// <summary>
+    /// Gets the algorithm used to solve the system (if tracked).
+    /// Null for solutions created before algorithm tracking was implemented,
+    /// or for non-success statuses (NoSolution, InfiniteSolutions, Error).
+    /// </summary>
+    public SolvingAlgorithm? AlgorithmUsed { get; private set; }
 
     private Solution(
         EquationSystem originalSystem,
@@ -100,6 +108,16 @@ public sealed class Solution
         if (!Values.TryGetValue(variable, out var value))
             throw new KeyNotFoundException($"Variable {variable} not found in solution");
         return value;
+    }
+
+    /// <summary>
+    /// Sets the algorithm used to solve this system.
+    /// Called internally by the solver after successful computation.
+    /// </summary>
+    /// <param name="algorithm">The solving algorithm used.</param>
+    internal void SetAlgorithmUsed(SolvingAlgorithm algorithm)
+    {
+        AlgorithmUsed = algorithm;
     }
 
     /// <inheritdoc/>

@@ -56,11 +56,13 @@ public static class Extensions
             {
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation();
+                    .AddRuntimeInstrumentation()
+                    .AddMeter("Neo.EquationSolver"); // Neo library metrics
             })
             .WithTracing(tracing =>
             {
                 tracing.AddSource(builder.Environment.ApplicationName)
+                    .AddSource("Neo.EquationSolver") // Neo library traces
                     .AddAspNetCoreInstrumentation(tracing =>
                         // Exclude health check requests from tracing
                         tracing.Filter = context =>
@@ -122,5 +124,20 @@ public static class Extensions
         }
 
         return app;
+    }
+
+    /// <summary>
+    /// Adds Neo equation solver telemetry integration to the application.
+    /// Registers the NeoTelemetryService and configures OpenTelemetry for Neo library traces and metrics.
+    /// </summary>
+    /// <typeparam name="TBuilder">The builder type.</typeparam>
+    /// <param name="builder">The application builder.</param>
+    /// <returns>The builder for chaining.</returns>
+    public static TBuilder AddNeoTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    {
+        // Neo telemetry is automatically picked up by the AddServiceDefaults
+        // because we added the "Neo.EquationSolver" meter and source in ConfigureOpenTelemetry.
+        // This method is provided for explicit registration if needed.
+        return builder;
     }
 }

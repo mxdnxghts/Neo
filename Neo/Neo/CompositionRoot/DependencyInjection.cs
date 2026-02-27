@@ -6,6 +6,7 @@ using Neo.Application.Validators;
 using Neo.Infrastructure.Integration;
 using Neo.Infrastructure.Matrix;
 using Neo.Infrastructure.Parsing;
+using Neo.Infrastructure.Telemetry;
 using System;
 
 namespace Neo.CompositionRoot;
@@ -123,6 +124,67 @@ public static class DependencyInjection
 
         // Application Layer
         services.AddSingleton<IEquationSolver, EquationSolver>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds Neo equation solver services with full telemetry support.
+    /// Uses the decorator pattern to wrap the core solver with telemetry concerns.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configureOptions">Optional action to configure solving options.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddNeoEquationSolverWithTelemetry(
+        this IServiceCollection services,
+        Action<SolvingOptions>? configureOptions = null)
+    {
+        // Register telemetry and performance monitoring
+        services.AddSingleton<NeoTelemetryService>();
+        services.AddSingleton<PerformanceMonitor>();
+        
+        // Register core solver components
+        services.AddSingleton<IEquationParser, EquationParser>();
+        services.AddSingleton<IMatrixConverter, MatrixConverter>();
+        services.AddSingleton<IMatrixSolver, MatrixSolver>();
+        services.AddSingleton<ISolutionValidator, SolutionValidator>();
+        
+        // Register options
+        services.AddSingleton(sp =>
+        {
+            var options = new SolvingOptions
+            {
+                EnableCaching = true,
+                CacheTtl = TimeSpan.FromMinutes(30),
+                DefaultAlgorithm = SolvingAlgorithm.LU,
+                ValidationTolerance = 1e-10,
+                MaxDegreeOfParallelism = -1
+            };
+            configureOptions?.Invoke(options);
+            return options;
+        });
+        
+        // Register cache
+        services.AddSingleton<IEquationCache, MemoryEquationCache>();
+        
+        // Register core solver
+        services.AddSingleton<IEquationSolver>(sp =>
+        {
+            var parser = sp.GetRequiredService<IEquationParser>();
+            var converter = sp.GetRequiredService<IMatrixConverter>();
+            var matrixSolver = sp.GetRequiredService<IMatrixSolver>();
+            var validator = sp.GetRequiredService<ISolutionValidator>();
+            var options = sp.GetRequiredService<SolvingOptions>();
+            
+            // Create core solver WITHOUT cache - cache is handled by decorator
+            var coreSolver = new EquationSolver(parser, converter, matrixSolver, validator, new NullEquationCache(), options);
+            
+            // Wrap with telemetry decorator (which also handles caching)
+            var telemetry = sp.GetRequiredService<NeoTelemetryService>();
+            var perfMonitor = sp.GetRequiredService<PerformanceMonitor>();
+            var cache = sp.GetRequiredService<IEquationCache>();
+            return new TelemetryEquationSolverDecorator(coreSolver, telemetry, perfMonitor, cache, options);
+        });
 
         return services;
     }

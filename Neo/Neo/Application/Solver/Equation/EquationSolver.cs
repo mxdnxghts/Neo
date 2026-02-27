@@ -6,7 +6,6 @@ using Neo.Domain.Equation;
 using Neo.Domain.Equation.Variables;
 using Neo.Domain.Result;
 using Neo.Domain.Solution;
-using Neo.Infrastructure.Integration;
 using Neo.Infrastructure.Matrix;
 using Neo.Infrastructure.Parsing;
 using System;
@@ -21,8 +20,9 @@ using System.Threading.Tasks;
 namespace Neo.Application.Solver.Equation;
 
 /// <summary>
-/// Orchestrator for solving linear equation systems.
+/// Core orchestrator for solving linear equation systems.
 /// Handles parsing, matrix conversion, algorithm selection, solving, validation, and caching.
+/// This class contains only business logic without cross-cutting concerns like telemetry.
 /// </summary>
 public sealed class EquationSolver : IEquationSolver
 {
@@ -31,7 +31,6 @@ public sealed class EquationSolver : IEquationSolver
     private readonly IMatrixSolver _matrixSolver;
     private readonly ISolutionValidator _validator;
     private readonly IEquationCache _cache;
-    private readonly PerformanceMonitor _performanceMonitor;
     private readonly SolvingOptions _defaultOptions;
 
     /// <summary>
@@ -42,7 +41,6 @@ public sealed class EquationSolver : IEquationSolver
     /// <param name="matrixSolver">The matrix solver.</param>
     /// <param name="validator">The solution validator.</param>
     /// <param name="cache">Optional cache. Uses <see cref="NullEquationCache"/> if not provided.</param>
-    /// <param name="performanceMonitor">Optional performance monitor.</param>
     /// <param name="defaultOptions">Default solving options.</param>
     public EquationSolver(
         IEquationParser parser,
@@ -50,7 +48,6 @@ public sealed class EquationSolver : IEquationSolver
         IMatrixSolver matrixSolver,
         ISolutionValidator validator,
         IEquationCache? cache = null,
-        PerformanceMonitor? performanceMonitor = null,
         SolvingOptions? defaultOptions = null)
     {
         _parser = parser ?? throw new ArgumentNullException(nameof(parser));
@@ -58,7 +55,6 @@ public sealed class EquationSolver : IEquationSolver
         _matrixSolver = matrixSolver ?? throw new ArgumentNullException(nameof(matrixSolver));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _cache = cache ?? new NullEquationCache();
-        _performanceMonitor = performanceMonitor ?? new PerformanceMonitor();
         _defaultOptions = defaultOptions ?? new SolvingOptions();
     }
 
@@ -172,62 +168,53 @@ public sealed class EquationSolver : IEquationSolver
 
     private Result<Solution> SolveInternal(string input, SolvingOptions options)
     {
-        using var activity = _performanceMonitor.StartActivity("SolveString");
+        // Check cache first
         if (options.EnableCaching)
         {
             var key = ComputeHash(input);
             var cached = _cache.GetSolution(key);
             if (cached.IsSuccess && cached.Value != null)
             {
-                activity.SetSuccess(true);
                 return Result<Solution>.Success(cached.Value);
             }
         }
 
+        // Parse the input
         var parseResult = _parser.Parse(input);
         if (parseResult.IsFailure)
-        {
-            activity.SetSuccess(false);
             return Result<Solution>.Failure(parseResult.Error!);
-        }
 
         var system = parseResult.Value!;
         var solutionResult = SolveInternal(system, options);
 
+        // Cache the result if successful
         if (solutionResult.IsSuccess && options.EnableCaching)
         {
             var key = ComputeHash(input);
             _cache.SetSolution(key, solutionResult.Value!, options.CacheTtl);
         }
 
-        activity.SetSuccess(solutionResult.IsSuccess);
         return solutionResult;
     }
 
     private Result<Solution> SolveInternal(EquationSystem system, SolvingOptions options)
     {
-        using var activity = _performanceMonitor.StartActivity("SolveSystem");
+        // Convert to matrix form
         var matrixResult = _converter.ToMathNetMatrix(system);
         if (matrixResult.IsFailure)
-        {
-            activity.SetSuccess(false);
             return Result<Solution>.Failure(matrixResult.Error!);
-        }
 
         var vectorResult = _converter.ToMathNetVector(system);
         if (vectorResult.IsFailure)
-        {
-            activity.SetSuccess(false);
             return Result<Solution>.Failure(vectorResult.Error!);
-        }
 
         var a = matrixResult.Value;
         var b = vectorResult.Value;
 
+        // Validate the system
         var status = _validator.DetermineStatus(system, a, b);
         if (status != SolutionStatus.Success)
         {
-            activity.SetSuccess(false);
             return status switch
             {
                 SolutionStatus.NoSolution => Result<Solution>.Failure(
@@ -238,30 +225,29 @@ public sealed class EquationSolver : IEquationSolver
             };
         }
 
+        // Select algorithm and solve
         var algorithm = SelectAlgorithm(a, options);
         var solveResult = _matrixSolver.Solve(a, b, algorithm);
         if (solveResult.IsFailure)
-        {
-            activity.SetSuccess(false);
             return Result<Solution>.Failure(solveResult.Error!);
-        }
 
         var x = solveResult.Value;
 
+        // Build solution with variable values
         var values = system.Variables
             .Select((v, i) => (v, x[i]))
             .ToDictionary(t => t.v, t => t.Item2);
 
         var solution = Solution.Success(system, values);
+        
+        // Track the algorithm used
+        solution.SetAlgorithmUsed(algorithm);
 
+        // Validate the solution
         var validation = _validator.Validate(system, solution, options.ValidationTolerance);
         if (validation.IsFailure)
-        {
-            activity.SetSuccess(false);
             return Result<Solution>.Failure(validation.Error!);
-        }
 
-        activity.SetSuccess(true);
         return Result<Solution>.Success(solution);
     }
 
