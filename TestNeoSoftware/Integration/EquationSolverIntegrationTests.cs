@@ -34,7 +34,7 @@ public class EquationSolverIntegrationTestBase
         Validator = new SolutionValidator();
         Cache = new MemoryEquationCache(); // Fresh cache for each test
         Monitor = new PerformanceMonitor();
-        EquationSolver = new EquationSolver(Parser, Converter, Solver, Validator, Cache, Monitor,
+        EquationSolver = new EquationSolver(Parser, Converter, Solver, Validator, Cache,
             new SolvingOptions { EnableCaching = false }); // Disable caching by default
     }
 
@@ -376,7 +376,7 @@ public class EquationSolverCachingTests : EquationSolverIntegrationTestBase
     {
         // Arrange - use cache
         var cache = new MemoryEquationCache();
-        var solver = new EquationSolver(Parser, Converter, Solver, Validator, cache, Monitor);
+        var solver = new EquationSolver(Parser, Converter, Solver, Validator, cache);
         var input = "x + y = 2; x - y = 0";
 
         // Act - first call
@@ -396,7 +396,7 @@ public class EquationSolverCachingTests : EquationSolverIntegrationTestBase
     {
         // Arrange
         var cache = new MemoryEquationCache();
-        var solver = new EquationSolver(Parser, Converter, Solver, Validator, cache, Monitor);
+        var solver = new EquationSolver(Parser, Converter, Solver, Validator, cache);
 
         // Act
         var result1 = solver.Solve("x = 1");
@@ -425,7 +425,7 @@ public class EquationSolverBatchTests
         var cache = new NullEquationCache(); // No caching for batch tests
         var monitor = new PerformanceMonitor();
         var options = new SolvingOptions { EnableCaching = false, MaxDegreeOfParallelism = 1 };
-        _solver = new EquationSolver(parser, converter, matrixSolver, validator, cache, monitor, options);
+        _solver = new EquationSolver(parser, converter, matrixSolver, validator, cache, options);
     }
 
     [Test]

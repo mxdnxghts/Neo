@@ -197,7 +197,7 @@ public class EquationSolverEndToEndBenchmark
         var validator = new SolutionValidator();
         var cache = new NullEquationCache();
         var monitor = new PerformanceMonitor();
-        _solver = new EquationSolver(parser, converter, matrixSolver, validator, cache, monitor);
+        _solver = new EquationSolver(parser, converter, matrixSolver, validator, cache);
 
         _simpleInput = "2x + 3y = 5; x - y = 1";
         _mediumInput = GenerateSystem(20);

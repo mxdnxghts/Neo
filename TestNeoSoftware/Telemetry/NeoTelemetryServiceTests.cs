@@ -14,10 +14,19 @@ public class NeoTelemetryServiceTests
 {
     private Mock<ILogger<NeoTelemetryService>> _loggerMock = null!;
     private NeoTelemetryService _telemetryService = null!;
+    private ActivityListener _activityListener = null!;
 
     [SetUp]
     public void SetUp()
     {
+        // Configure ActivityListener to capture activities
+        _activityListener = new ActivityListener
+        {
+            ShouldListenTo = (source) => source.Name == "Neo.EquationSolver",
+            Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllData
+        };
+        ActivitySource.AddActivityListener(_activityListener);
+
         _loggerMock = new Mock<ILogger<NeoTelemetryService>>();
         _telemetryService = new NeoTelemetryService(_loggerMock.Object);
     }
@@ -179,5 +188,6 @@ public class NeoTelemetryServiceTests
     public void TearDown()
     {
         _telemetryService?.Dispose();
+        _activityListener?.Dispose();
     }
 }

@@ -55,8 +55,8 @@ public class CachingBenchmarks
         var converter = new MatrixConverter();
         var matrixSolver = new MatrixSolver();
         var validator = new SolutionValidator();
-        IEquationCache cache = enableCache 
-            ? new MemoryEquationCache() 
+        IEquationCache cache = enableCache
+            ? new MemoryEquationCache()
             : new NullEquationCache();
         var options = new SolvingOptions
         {
@@ -65,6 +65,6 @@ public class CachingBenchmarks
             DefaultAlgorithm = SolvingAlgorithm.LU
         };
 
-        return new EquationSolver(parser, converter, matrixSolver, validator, cache, null, options);
+        return new EquationSolver(parser, converter, matrixSolver, validator, cache, options);
     }
 }

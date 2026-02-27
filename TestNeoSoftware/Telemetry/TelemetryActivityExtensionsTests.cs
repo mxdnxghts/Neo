@@ -13,10 +13,19 @@ public class TelemetryActivityExtensionsTests
 {
     private Activity _activity = null!;
     private ActivitySource _activitySource = null!;
+    private ActivityListener _activityListener = null!;
 
     [SetUp]
     public void SetUp()
     {
+        // Configure ActivityListener to capture activities
+        _activityListener = new ActivityListener
+        {
+            ShouldListenTo = (source) => source.Name == "TestSource",
+            Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllData
+        };
+        ActivitySource.AddActivityListener(_activityListener);
+
         _activitySource = new ActivitySource("TestSource", "1.0.0");
         _activity = _activitySource.StartActivity("TestActivity")!;
     }
@@ -26,6 +35,7 @@ public class TelemetryActivityExtensionsTests
     {
         _activity?.Dispose();
         _activitySource?.Dispose();
+        _activityListener?.Dispose();
     }
 
     [Test]
@@ -33,14 +43,14 @@ public class TelemetryActivityExtensionsTests
     {
         // Arrange
         var matrix = Matrix<double>.Build.Dense(3, 3, (i, j) => i * 3 + j);
-        
+
         // Act
         _activity.SetMatrixTags(matrix, "test");
-        
+
         // Assert
         _activity.GetTagItem("test.rows").Should().Be(3);
         _activity.GetTagItem("test.columns").Should().Be(3);
-        _activity.GetTagItem("test.isSquare").Should().BeTrue();
+        _activity.GetTagItem("test.isSquare").Should().Be(true);
     }
 
     [Test]
@@ -48,14 +58,14 @@ public class TelemetryActivityExtensionsTests
     {
         // Arrange
         var matrix = Matrix<double>.Build.Dense(3, 4, (i, j) => i * 4 + j);
-        
+
         // Act
         _activity.SetMatrixTags(matrix);
-        
+
         // Assert
         _activity.GetTagItem("matrix.rows").Should().Be(3);
         _activity.GetTagItem("matrix.columns").Should().Be(4);
-        _activity.GetTagItem("matrix.isSquare").Should().BeFalse();
+        _activity.GetTagItem("matrix.isSquare").Should().Be(false);
     }
 
     [Test]
@@ -74,10 +84,10 @@ public class TelemetryActivityExtensionsTests
     {
         // Act
         _activity.SetSolutionTags("LU", true, TimeSpan.FromMilliseconds(50));
-        
+
         // Assert
         _activity.GetTagItem("neo.algorithm").Should().Be("LU");
-        _activity.GetTagItem("neo.success").Should().BeTrue();
+        _activity.GetTagItem("neo.success").Should().Be(true);
         _activity.GetTagItem("neo.duration.ms").Should().Be(50.0);
         _activity.Status.Should().Be(ActivityStatusCode.Ok);
     }
@@ -87,10 +97,10 @@ public class TelemetryActivityExtensionsTests
     {
         // Act
         _activity.SetSolutionTags("QR", false, TimeSpan.FromMilliseconds(100));
-        
+
         // Assert
         _activity.GetTagItem("neo.algorithm").Should().Be("QR");
-        _activity.GetTagItem("neo.success").Should().BeFalse();
+        _activity.GetTagItem("neo.success").Should().Be(false);
         _activity.Status.Should().Be(ActivityStatusCode.Error);
     }
 
@@ -135,9 +145,9 @@ public class TelemetryActivityExtensionsTests
     {
         // Act
         _activity.SetCacheTags(true, TimeSpan.FromMilliseconds(5));
-        
+
         // Assert
-        _activity.GetTagItem("neo.cache.hit").Should().BeTrue();
+        _activity.GetTagItem("neo.cache.hit").Should().Be(true);
         _activity.GetTagItem("neo.cache.lookup.ms").Should().Be(5.0);
     }
 
@@ -146,9 +156,9 @@ public class TelemetryActivityExtensionsTests
     {
         // Act
         _activity.SetCacheTags(false);
-        
+
         // Assert
-        _activity.GetTagItem("neo.cache.hit").Should().BeFalse();
+        _activity.GetTagItem("neo.cache.hit").Should().Be(false);
         _activity.GetTagItem("neo.cache.lookup.ms").Should().BeNull();
     }
 
@@ -167,11 +177,11 @@ public class TelemetryActivityExtensionsTests
     {
         // Act
         _activity.SetEquationSystemTags(3, 3);
-        
+
         // Assert
         _activity.GetTagItem("neo.equation.count").Should().Be(3);
         _activity.GetTagItem("neo.variable.count").Should().Be(3);
-        _activity.GetTagItem("neo.isSquare").Should().BeTrue();
+        _activity.GetTagItem("neo.isSquare").Should().Be(true);
     }
 
     [Test]
@@ -179,11 +189,11 @@ public class TelemetryActivityExtensionsTests
     {
         // Act
         _activity.SetEquationSystemTags(3, 4);
-        
+
         // Assert
         _activity.GetTagItem("neo.equation.count").Should().Be(3);
         _activity.GetTagItem("neo.variable.count").Should().Be(4);
-        _activity.GetTagItem("neo.isSquare").Should().BeFalse();
+        _activity.GetTagItem("neo.isSquare").Should().Be(false);
     }
 
     [Test]

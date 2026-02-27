@@ -58,7 +58,7 @@ public class BatchBenchmarks
             MaxDegreeOfParallelism = -1
         };
 
-        return new EquationSolver(parser, converter, matrixSolver, validator, cache, null, options);
+        return new EquationSolver(parser, converter, matrixSolver, validator, cache, options);
     }
 
     private static List<string> GenerateEquations(int count)

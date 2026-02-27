@@ -29,7 +29,6 @@ public class MemoryEquationCacheTests
     [TearDown]
     public void TearDown()
     {
-        _cache.Clear();
     }
 
     [Test]

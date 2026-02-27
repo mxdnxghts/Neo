@@ -54,6 +54,7 @@ public static class DependencyInjection
 
         // Application Layer - orchestrators
         services.AddSingleton<IEquationSolver, EquationSolver>();
+        services.Decorate<IEquationSolver, TelemetryEquationSolverDecorator>();
 
         return services;
     }

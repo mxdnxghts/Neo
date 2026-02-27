@@ -100,7 +100,7 @@ public class SolvingBenchmarks
             DefaultAlgorithm = SolvingAlgorithm.LU
         };
 
-        return new EquationSolver(parser, converter, matrixSolver, validator, cache, null, options);
+        return new EquationSolver(parser, converter, matrixSolver, validator, cache, options);
     }
 
     private static string GenerateEquationString(int size)

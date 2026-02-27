@@ -1,3 +1,4 @@
+using Neo.Application.Solver.Equation;
 using Neo.CompositionRoot;
 using Neo.Infrastructure.Telemetry;
 using NeoTelemetry.ApiService.Endpoints;
