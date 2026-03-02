@@ -22,42 +22,34 @@ namespace Neo.Application.Solver.Equation;
 /// Wraps a core solver instance and records metrics, traces, and errors for all operations.
 /// Also handles caching to avoid redundant computations.
 /// </summary>
-public sealed class TelemetryEquationSolverDecorator : IEquationSolver
+/// <remarks>
+/// Initializes a new instance of the <see cref="TelemetryEquationSolverDecorator"/> class.
+/// </remarks>
+/// <param name="inner">The inner equation solver to decorate.</param>
+/// <param name="telemetry">The telemetry service.</param>
+/// <param name="performanceMonitor">Optional performance monitor.</param>
+/// <param name="cache">Optional cache for storing solutions.</param>
+/// <param name="options">Solving options including cache settings.</param>
+public sealed class TelemetryEquationSolverDecorator(
+    IEquationSolver inner,
+    NeoTelemetryService telemetry,
+    PerformanceMonitor? performanceMonitor = null,
+    IEquationCache? cache = null,
+    SolvingOptions? options = null) : EquationSolverDecorator(inner)
 {
-    private readonly IEquationSolver _inner;
-    private readonly NeoTelemetryService _telemetry;
-    private readonly PerformanceMonitor _performanceMonitor;
-    private readonly IEquationCache _cache;
-    private readonly SolvingOptions _options;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="TelemetryEquationSolverDecorator"/> class.
-    /// </summary>
-    /// <param name="inner">The inner equation solver to decorate.</param>
-    /// <param name="telemetry">The telemetry service.</param>
-    /// <param name="performanceMonitor">Optional performance monitor.</param>
-    /// <param name="cache">Optional cache for storing solutions.</param>
-    /// <param name="options">Solving options including cache settings.</param>
-    public TelemetryEquationSolverDecorator(
-        IEquationSolver inner,
-        NeoTelemetryService telemetry,
-        PerformanceMonitor? performanceMonitor = null,
-        IEquationCache? cache = null,
-        SolvingOptions? options = null)
-    {
-        _inner = inner ?? throw new ArgumentNullException(nameof(inner));
-        _telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
-        _performanceMonitor = performanceMonitor ?? new PerformanceMonitor();
-        _cache = cache ?? new NullEquationCache();
-        _options = options ?? new SolvingOptions();
-    }
+    private readonly IEquationSolver _inner = inner ?? throw new ArgumentNullException(nameof(inner));
+    private readonly NeoTelemetryService _telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
+    private readonly PerformanceMonitor _performanceMonitor = performanceMonitor ?? new PerformanceMonitor();
+    private readonly IEquationCache _cache = cache ?? new NullEquationCache();
+    private readonly SolvingOptions _options = options ?? new SolvingOptions();
 
     // ----------------------------------------------------------------------
     // Public API – synchronous
     // ----------------------------------------------------------------------
 
+
     /// <inheritdoc/>
-    public Result<Solution> Solve(string equationInput)
+    public override Result<Solution> Solve(string equationInput)
     {
         using var perfActivity = _performanceMonitor.StartActivity("SolveString");
         var stopwatch = Stopwatch.StartNew();
@@ -132,7 +124,7 @@ public sealed class TelemetryEquationSolverDecorator : IEquationSolver
     }
 
     /// <inheritdoc/>
-    public Result<Solution> Solve(EquationSystem system)
+    public override Result<Solution> Solve(EquationSystem system)
     {
         using var perfActivity = _performanceMonitor.StartActivity("SolveSystem");
         var stopwatch = Stopwatch.StartNew();
@@ -175,7 +167,7 @@ public sealed class TelemetryEquationSolverDecorator : IEquationSolver
     }
 
     /// <inheritdoc/>
-    public Result<Solution> Solve(Matrix<double> coefficients, Vector<double> constants)
+    public override Result<Solution> Solve(Matrix<double> coefficients, Vector<double> constants)
     {
         using var perfActivity = _performanceMonitor.StartActivity("SolveMatrix");
         var stopwatch = Stopwatch.StartNew();
@@ -222,7 +214,7 @@ public sealed class TelemetryEquationSolverDecorator : IEquationSolver
     // ----------------------------------------------------------------------
 
     /// <inheritdoc/>
-    public async Task<Result<Solution>> SolveAsync(string equationInput, CancellationToken cancellationToken = default)
+    public override async Task<Result<Solution>> SolveAsync(string equationInput, CancellationToken cancellationToken = default)
     {
         using var perfActivity = _performanceMonitor.StartActivity("SolveStringAsync");
         var stopwatch = Stopwatch.StartNew();
@@ -263,7 +255,7 @@ public sealed class TelemetryEquationSolverDecorator : IEquationSolver
     }
 
     /// <inheritdoc/>
-    public async Task<Result<Solution>> SolveAsync(EquationSystem system, CancellationToken cancellationToken = default)
+    public override async Task<Result<Solution>> SolveAsync(EquationSystem system, CancellationToken cancellationToken = default)
     {
         using var perfActivity = _performanceMonitor.StartActivity("SolveSystemAsync");
         var stopwatch = Stopwatch.StartNew();
@@ -310,7 +302,7 @@ public sealed class TelemetryEquationSolverDecorator : IEquationSolver
     // ----------------------------------------------------------------------
 
     /// <inheritdoc/>
-    public async Task<Result<IReadOnlyList<Solution>>> SolveBatchAsync(
+    public override async Task<Result<IReadOnlyList<Solution>>> SolveBatchAsync(
         IEnumerable<string> inputs,
         CancellationToken cancellationToken = default)
     {
@@ -350,7 +342,7 @@ public sealed class TelemetryEquationSolverDecorator : IEquationSolver
     }
 
     /// <inheritdoc/>
-    public async IAsyncEnumerable<Solution> SolveStreamAsync(
+    public override async IAsyncEnumerable<Solution> SolveStreamAsync(
         IAsyncEnumerable<string> equationStream,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -404,7 +396,7 @@ public sealed class TelemetryEquationSolverDecorator : IEquationSolver
     // ----------------------------------------------------------------------
 
     /// <inheritdoc/>
-    public Result<Solution> SolveWithOptions(string input, SolvingOptions options)
+    public override Result<Solution> SolveWithOptions(string input, SolvingOptions options)
     {
         using var perfActivity = _performanceMonitor.StartActivity("SolveWithOptions");
         var stopwatch = Stopwatch.StartNew();
@@ -444,7 +436,7 @@ public sealed class TelemetryEquationSolverDecorator : IEquationSolver
     }
 
     /// <inheritdoc/>
-    public Result<Solution> SolveWithAlgorithm(string input, SolvingAlgorithm algorithm)
+    public override Result<Solution> SolveWithAlgorithm(string input, SolvingAlgorithm algorithm)
     {
         using var perfActivity = _performanceMonitor.StartActivity("SolveWithAlgorithm");
         var stopwatch = Stopwatch.StartNew();
