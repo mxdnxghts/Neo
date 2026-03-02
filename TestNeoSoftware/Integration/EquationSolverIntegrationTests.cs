@@ -18,7 +18,6 @@ namespace TestNeoSoftware.Integration;
 
 public class EquationSolverIntegrationTestBase
 {
-    protected Mock<IMemoryCache> _memoryCacheMock;
     protected IEquationParser Parser = null!;
     protected IMatrixConverter Converter = null!;
     protected IMatrixSolver Solver = null!;
@@ -31,12 +30,11 @@ public class EquationSolverIntegrationTestBase
     [SetUp]
     public void SetUp()
     {
-        _memoryCacheMock = new Mock<IMemoryCache>();
         Parser = new EquationParser();
         Converter = new MatrixConverter();
         Solver = new MatrixSolver();
         Validator = new SolutionValidator();
-        Cache = new MemoryEquationCache(_memoryCacheMock.Object); // Fresh cache for each test
+        Cache = new MemoryEquationCache(new MemoryCache(new MemoryCacheOptions())); // Fresh cache for each test
         Monitor = new PerformanceMonitor();
         EquationSolver = new EquationSolver(Parser, Converter, Solver, Validator, Cache,
             new SolvingOptions { EnableCaching = false }); // Disable caching by default
@@ -379,7 +377,7 @@ public class EquationSolverCachingTests : EquationSolverIntegrationTestBase
     public void Solve_WithCaching_SecondCallUsesCache()
     {
         // Arrange - use cache
-        var cache = new MemoryEquationCache(_memoryCacheMock.Object);
+        var cache = new MemoryEquationCache(new MemoryCache(new MemoryCacheOptions()));
         var solver = new EquationSolver(Parser, Converter, Solver, Validator, cache);
         var input = "x + y = 2; x - y = 0";
 
@@ -399,7 +397,7 @@ public class EquationSolverCachingTests : EquationSolverIntegrationTestBase
     public void Solve_WithCaching_DifferentInputs_NoCache()
     {
         // Arrange
-        var cache = new MemoryEquationCache(_memoryCacheMock.Object);
+        var cache = new MemoryEquationCache(new MemoryCache(new MemoryCacheOptions()));
         var solver = new EquationSolver(Parser, Converter, Solver, Validator, cache);
 
         // Act

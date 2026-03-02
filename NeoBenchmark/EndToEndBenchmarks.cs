@@ -79,13 +79,12 @@ public class EndToEndBenchmarks
 
     private static EquationSolver CreateSolver(bool enableCache)
     {
-        var memoryCacheMock = new Mock<IMemoryCache>();
         var parser = new EquationParser();
         var converter = new MatrixConverter();
         var matrixSolver = new MatrixSolver();
         var validator = new SolutionValidator();
         IEquationCache cache = enableCache
-            ? new MemoryEquationCache(memoryCacheMock.Object)
+            ? new MemoryEquationCache(new MemoryCache(new MemoryCacheOptions()))
             : new NullEquationCache();
         var options = new SolvingOptions
         {
