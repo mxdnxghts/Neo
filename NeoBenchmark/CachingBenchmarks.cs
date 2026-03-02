@@ -1,4 +1,8 @@
 using BenchmarkDotNet.Attributes;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.Memory;
+using Moq;
 using Neo.Application.Caching;
 using Neo.Application.Solver.Equation;
 using Neo.Application.Solver.Matrix;
@@ -19,6 +23,7 @@ namespace NeoBenchmark.Caching;
 public class CachingBenchmarks
 {
     private EquationSolver _solverWithCache = null!;
+    private EquationSolver _solverWithDicMemoryCache = null!;
     private EquationSolver _solverNoCache = null!;
     private string _equation = null!;
 
@@ -26,16 +31,22 @@ public class CachingBenchmarks
     public void Setup()
     {
         _equation = "2x + 3y = 8; x - y = 1";
-        _solverWithCache = CreateSolver(enableCache: true);
-        _solverNoCache = CreateSolver(enableCache: false);
+        _solverWithCache = CreateSolver(Caching.Memory);
+        _solverWithDicMemoryCache = CreateSolver(Caching.DicMemory);
+        _solverNoCache = CreateSolver(Caching.Null);
 
         // Warm up cache
         _solverWithCache.Solve(_equation);
+        _solverWithDicMemoryCache.Solve(_equation);
     }
 
     [Benchmark(Baseline = true)]
     public Result<Solution> Solve_WithCache_Hit() 
         => _solverWithCache.Solve(_equation);
+        
+    [Benchmark]
+    public Result<Solution> Solve_WithDictionaryMemoryCache_Hit() 
+        => _solverWithDicMemoryCache.Solve(_equation);
 
     [Benchmark]
     public Result<Solution> Solve_NoCache() 
@@ -49,22 +60,34 @@ public class CachingBenchmarks
         return _solverWithCache.Solve(uniqueEquation);
     }
 
-    private static EquationSolver CreateSolver(bool enableCache)
+    private static EquationSolver CreateSolver(Caching caching)
     {
         var parser = new EquationParser();
         var converter = new MatrixConverter();
         var matrixSolver = new MatrixSolver();
         var validator = new SolutionValidator();
-        IEquationCache cache = enableCache
-            ? new MemoryEquationCache()
-            : new NullEquationCache();
+        IEquationCache cache = caching switch
+        {
+            Caching.Memory => new MemoryEquationCache(new MemoryCache(new MemoryCacheOptions())),
+            Caching.DicMemory => new InternalMemoryEquationCache(),
+            Caching.Null => new NullEquationCache(),
+            _ => throw new ArgumentOutOfRangeException(nameof(caching), caching, null),
+        };
+
         var options = new SolvingOptions
         {
-            EnableCaching = enableCache,
+            EnableCaching = caching != Caching.Null,
             CacheTtl = TimeSpan.FromMinutes(30),
             DefaultAlgorithm = SolvingAlgorithm.LU
         };
 
         return new EquationSolver(parser, converter, matrixSolver, validator, cache, options);
     }
+}
+
+enum Caching
+{
+    Memory,
+    DicMemory,
+    Null,
 }

@@ -40,9 +40,4 @@ public interface IEquationCache
     /// <param name="solution">The solution.</param>
     /// <param name="ttl">Optional time-to-live. Uses default if not specified.</param>
     void SetSolution(string key, Solution solution, TimeSpan? ttl = null);
-
-    /// <summary>
-    /// Clears all cached items.
-    /// </summary>
-    void Clear();
 }

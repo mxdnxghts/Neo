@@ -1,4 +1,6 @@
 using BenchmarkDotNet.Attributes;
+using Microsoft.Extensions.Caching.Memory;
+using Moq;
 using Neo.Application.Caching;
 using Neo.Application.Solver.Equation;
 using Neo.Application.Solver.Matrix;
@@ -54,7 +56,7 @@ public class MemoryBenchmarks
         var converter = new MatrixConverter();
         var matrixSolver = new MatrixSolver();
         var validator = new SolutionValidator();
-        var cache = new MemoryEquationCache();
+        var cache = new MemoryEquationCache(new MemoryCache(new MemoryCacheOptions()));
         var options = new SolvingOptions
         {
             EnableCaching = true,

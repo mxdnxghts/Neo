@@ -1,7 +1,9 @@
+using Moq;
 using Neo.Application.Caching;
 using Neo.Domain.Equation;
 using Neo.Domain.Equation.Variables;
 using Neo.Domain.Solution;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace TestNeoSoftware.Application.Caching;
 
@@ -15,7 +17,7 @@ public class MemoryEquationCacheTests
     [SetUp]
     public void SetUp()
     {
-        _cache = new MemoryEquationCache();
+        _cache = new MemoryEquationCache(new MemoryCache(new MemoryCacheOptions()));
 
         var x = Variable.Create("x");
         var equations = new[]
@@ -131,21 +133,6 @@ public class MemoryEquationCacheTests
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeNull();
-    }
-
-    [Test]
-    public void Clear_RemovesAll()
-    {
-        // Arrange
-        _cache.SetSystem("system-key", _system);
-        _cache.SetSolution("solution-key", _solution);
-
-        // Act
-        _cache.Clear();
-
-        // Assert
-        _cache.GetSystem("system-key").Value.Should().BeNull();
-        _cache.GetSolution("solution-key").Value.Should().BeNull();
     }
 
     [Test]

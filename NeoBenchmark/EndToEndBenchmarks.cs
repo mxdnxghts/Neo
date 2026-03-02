@@ -1,4 +1,6 @@
 using BenchmarkDotNet.Attributes;
+using Microsoft.Extensions.Caching.Memory;
+using Moq;
 using Neo.Application.Caching;
 using Neo.Application.Solver.Equation;
 using Neo.Application.Solver.Matrix;
@@ -77,12 +79,13 @@ public class EndToEndBenchmarks
 
     private static EquationSolver CreateSolver(bool enableCache)
     {
+        var memoryCacheMock = new Mock<IMemoryCache>();
         var parser = new EquationParser();
         var converter = new MatrixConverter();
         var matrixSolver = new MatrixSolver();
         var validator = new SolutionValidator();
         IEquationCache cache = enableCache
-            ? new MemoryEquationCache()
+            ? new MemoryEquationCache(memoryCacheMock.Object)
             : new NullEquationCache();
         var options = new SolvingOptions
         {

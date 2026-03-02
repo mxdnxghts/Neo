@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddSingleton<PerformanceMonitor>();
 
         // Application Layer - orchestrators
+        services.AddMemoryCache();
         services.AddSingleton<IEquationSolver, EquationSolver>();
         services.Decorate<IEquationSolver, TelemetryEquationSolverDecorator>();
 

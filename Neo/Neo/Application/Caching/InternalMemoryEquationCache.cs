@@ -1,4 +1,3 @@
-﻿using Microsoft.Extensions.Caching.Memory;
 using Neo.Domain.Equation;
 using Neo.Domain.Result;
 using Neo.Domain.Solution;
@@ -11,42 +10,42 @@ namespace Neo.Application.Caching;
 /// In-memory implementation of <see cref="IEquationCache"/> with TTL-based expiration.
 /// Thread-safe using <see cref="ConcurrentDictionary{TKey,TValue}"/>.
 /// </summary>
-public sealed class MemoryEquationCache : IEquationCache
+public sealed class InternalMemoryEquationCache : IEquationCache
 {
-    private readonly IMemoryCache _memoryCache;
-    public MemoryEquationCache(IMemoryCache memoryCache)
-    {
-        _memoryCache = memoryCache;
-    }
-    
+    private readonly ConcurrentDictionary<string, CacheEntry<EquationSystem>> _systemCache = new();
+    private readonly ConcurrentDictionary<string, CacheEntry<Solution>> _solutionCache = new();
+
     /// <inheritdoc/>
-    public Result<EquationSystem?> GetSystem(string key)
-    {
-        return _memoryCache.TryGetValue(key, out CacheEntry<EquationSystem> entry) && !entry.IsExpired
+    public Result<EquationSystem?> GetSystem(string key) =>
+        _systemCache.TryGetValue(key, out var entry) && !entry.IsExpired
             ? Result<EquationSystem>.Success(entry.Value)
             : Result<EquationSystem>.Success(null);
-    }
 
     /// <inheritdoc/>
     public void SetSystem(string key, EquationSystem system, TimeSpan? ttl = null)
     {
         var expires = ttl.HasValue ? DateTime.UtcNow.Add(ttl.Value) : DateTime.MaxValue;
-        _memoryCache.Set(key, new CacheEntry<EquationSystem>(system, expires), expires);
+        _systemCache[key] = new CacheEntry<EquationSystem>(system, expires);
     }
 
     /// <inheritdoc/>
-    public Result<Solution?> GetSolution(string key)
-    {
-        return _memoryCache.TryGetValue(key, out CacheEntry<Solution> entry) && !entry.IsExpired
+    public Result<Solution?> GetSolution(string key) =>
+        _solutionCache.TryGetValue(key, out var entry) && !entry.IsExpired
             ? Result<Solution>.Success(entry.Value)
             : Result<Solution>.Success(null);
-    }
 
     /// <inheritdoc/>
     public void SetSolution(string key, Solution solution, TimeSpan? ttl = null)
     {
         var expires = ttl.HasValue ? DateTime.UtcNow.Add(ttl.Value) : DateTime.MaxValue;
-        _memoryCache.Set(key, new CacheEntry<Solution>(solution, expires), expires);
+        _solutionCache[key] = new CacheEntry<Solution>(solution, expires);
+    }
+
+    /// <inheritdoc/>
+    public void Clear()
+    {
+        _systemCache.Clear();
+        _solutionCache.Clear();
     }
 
     /// <summary>
