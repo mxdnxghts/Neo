@@ -53,34 +53,7 @@ public sealed class TelemetryEquationSolverDecorator(
         using var perfActivity = _performanceMonitor.StartActivity("SolveString");
         var stopwatch = Stopwatch.StartNew();
         var telemetryActivity = _telemetry.StartSolveActivity("SolveString");
-        var cacheStopwatch = Stopwatch.StartNew();
 
-        // Check cache first
-        if (_options.EnableCaching)
-        {
-            var key = ComputeHash(equationInput);
-            var cached = _cache.GetSolution(key);
-            cacheStopwatch.Stop();
-
-            if (cached.IsSuccess && cached.Value != null)
-            {
-                _telemetry.RecordCacheHit(cacheStopwatch.Elapsed);
-                telemetryActivity?.SetCacheTags(true, cacheStopwatch.Elapsed);
-                var solution = cached.Value;
-                var algorithm = solution.AlgorithmUsed?.ToString() ?? "Cache";
-                _telemetry.RecordEquationSolved(
-                    solution.OriginalSystem.VariableCount,
-                    cacheStopwatch.Elapsed,
-                    algorithm);
-                telemetryActivity?.SetSolutionTags(algorithm, true, cacheStopwatch.Elapsed);
-                perfActivity.SetSuccess(true);
-                return Result<Solution>.Success(solution);
-            }
-            _telemetry.RecordCacheMiss(cacheStopwatch.Elapsed);
-            telemetryActivity?.SetCacheTags(false, cacheStopwatch.Elapsed);
-        }
-
-        // Solve
         try
         {
             var result = _inner.Solve(equationInput);
