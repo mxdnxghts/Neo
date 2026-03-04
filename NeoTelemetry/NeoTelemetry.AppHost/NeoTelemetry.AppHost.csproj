@@ -11,9 +11,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\NeoAndroidApp\NeoAndroidApp.csproj">
-      <SetTargetFramework>TargetFramework=net10.0</SetTargetFramework>
-    </ProjectReference>
     <ProjectReference Include="..\NeoTelemetry.ApiService\NeoTelemetry.ApiService.csproj" />
     <ProjectReference Include="..\NeoTelemetry.Web\NeoTelemetry.Web.csproj" />
   </ItemGroup>

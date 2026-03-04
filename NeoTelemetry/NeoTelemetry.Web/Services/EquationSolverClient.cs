@@ -21,12 +21,11 @@ public class EquationSolverClient(HttpClient httpClient)
     public async Task<SolutionResult?> SolveAsync(string equationInput, CancellationToken cancellationToken = default)
     {
         var request = new SolveRequest(equationInput, GenerateHash(equationInput));
-        
         var response = await _httpClient.PostAsJsonAsync("/api/equations/solve", request, cancellationToken);
-        
+
         response.EnsureSuccessStatusCode();
-        
-        var solveResponse = await response.Content.ReadFromJsonAsync<SolveResponse>(cancellationToken: cancellationToken);
+
+        var solveResponse = await response.Content.ReadFromJsonAsync<SolveResponseDto>(cancellationToken: cancellationToken);
         return solveResponse?.ToSolutionResult();
     }
 
@@ -37,16 +36,16 @@ public class EquationSolverClient(HttpClient httpClient)
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of solutions.</returns>
     public async Task<IReadOnlyList<SolutionResult>> SolveBatchAsync(
-        IEnumerable<string> equationInputs, 
+        IEnumerable<string> equationInputs,
         CancellationToken cancellationToken = default)
     {
         var inputs = string.Join(";", equationInputs);
         var response = await _httpClient.GetAsync($"/api/equations/solve-batch?inputs={Uri.EscapeDataString(inputs)}", cancellationToken);
-        
+
         response.EnsureSuccessStatusCode();
-        
-        var batchResponse = await response.Content.ReadFromJsonAsync<BatchSolveResponse>(cancellationToken: cancellationToken);
-        return batchResponse?.Solutions.Select(s => new SolutionResult(s.OriginalSystem.VariableCount, s.Status.ToString())).ToList() 
+
+        var batchResponse = await response.Content.ReadFromJsonAsync<BatchSolveResponseDto>(cancellationToken: cancellationToken);
+        return batchResponse?.Solutions.Select(s => new SolutionResult(s.VariableCount, s.Status, s.Values?.Select(v => string.Format("{0:G6}", v.Value)).ToList())).ToList()
             ?? Enumerable.Empty<SolutionResult>().ToList();
     }
 
@@ -80,24 +79,43 @@ public class EquationSolverClient(HttpClient httpClient)
 public record SolveRequest(string Input, string? InputHash = null);
 
 /// <summary>
-/// Response from the solve endpoint.
+/// Response from the solve endpoint (DTO).
 /// </summary>
-/// <param name="Solution">The solution.</param>
-public record SolveResponse(Neo.Domain.Solution.Solution Solution)
+public record SolveResponseDto(
+    int VariableCount,
+    int EquationCount,
+    string Status,
+    Dictionary<string, double> Values,
+    string? AlgorithmUsed,
+    string? Message)
 {
-    public SolutionResult ToSolutionResult() =>
-        new(Solution.OriginalSystem.VariableCount, Solution.Status.ToString());
+    public SolutionResult ToSolutionResult()
+    {
+        var values = Values?.Values.Select(v => string.Format("{0:G6}", v)).ToList();
+        return new SolutionResult(VariableCount, Status, values);
+    }
 };
 
 /// <summary>
-/// Batch solve response.
+/// Batch solve response (DTO).
 /// </summary>
-/// <param name="Solutions">The solutions.</param>
-public record BatchSolveResponse(IReadOnlyList<Neo.Domain.Solution.Solution> Solutions);
+public record BatchSolveResponseDto(List<BatchSolutionDto> Solutions);
+
+/// <summary>
+/// Single solution in batch response (DTO).
+/// </summary>
+public record BatchSolutionDto(
+    int VariableCount,
+    int EquationCount,
+    string Status,
+    Dictionary<string, double> Values,
+    string? AlgorithmUsed,
+    string? Message);
 
 /// <summary>
 /// Simplified solution result for the UI.
 /// </summary>
 /// <param name="VariableCount">Number of variables.</param>
 /// <param name="Status">Solution status.</param>
-public record SolutionResult(int VariableCount, string Status);
+/// <param name="Values">Optional solution values.</param>
+public record SolutionResult(int VariableCount, string Status, List<string>? Values = null);

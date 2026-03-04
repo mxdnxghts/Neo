@@ -1,0 +1,173 @@
+@page "/equation-solver"
+@using NeoTelemetry.Web.Services
+@inject EquationSolverClient SolverClient
+@rendermode InteractiveServer
+
+<PageTitle>Equation Solver</PageTitle>
+
+<h3>Neo Equation Solver</h3>
+<p class="lead">Solve systems of linear equations with multiple algorithms.</p>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Enter Your Equations</h5>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label for="equationInput" class="form-label">
+                Equation System (e.g., <code>2x + 3y = 5; x - y = 1</code>)
+            </label>
+            <textarea 
+                id="equationInput" 
+                class="form-control" 
+                rows="3" 
+                @bind="equationInput"
+                placeholder="Enter equations separated by semicolons">
+            </textarea>
+            <div class="form-text">
+                Supported format: coefficients with variables (x, y, z, etc.) and constants.
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" @onclick="SolveEquation" disabled="@isSolving">
+                @if (isSolving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <text>Solving...</text>
+                }
+                else
+                {
+                    <text>Solve</text>
+                }
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="Clear">Clear</button>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Error:</strong> @errorMessage
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (solution != null)
+{
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Solution</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Status</h6>
+                    <span class="badge @(solution.Status == "Success" ? "bg-success" : "bg-warning")">
+                        @solution.Status
+                    </span>
+                </div>
+                <div class="col-md-6">
+                    <h6>Variables</h6>
+                    <p>@solution.VariableCount variable(s)</p>
+                </div>
+            </div>
+            
+            @if (solution.Status == "Success")
+            {
+                <h6 class="mt-3">Results</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Variable</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < solution.VariableCount; i++)
+                            {
+                                <tr>
+                                    <td><strong>x<sub>@(i + 1)</sub></strong></td>
+                                    <td>@solution.Values?[i]</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Examples</h5>
+    </div>
+    <div class="card-body">
+        <div class="list-group">
+            <button type="button" class="list-group-item list-group-item-action" @onclick='() => LoadExample("2x + 3y = 5; x - y = 1")'>
+                <strong>2 variables:</strong> 2x + 3y = 5; x - y = 1
+            </button>
+            <button type="button" class="list-group-item list-group-item-action" @onclick='() => LoadExample("x + y + z = 6; 2x - y + z = 3; x + 2y - z = 2")'>
+                <strong>3 variables:</strong> x + y + z = 6; 2x - y + z = 3; x + 2y - z = 2
+            </button>
+            <button type="button" class="list-group-item list-group-item-action" @onclick='() => LoadExample("4a + 2b = 10; 3a - b = 5")'>
+                <strong>Different variables:</strong> 4a + 2b = 10; 3a - b = 5
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string equationInput = string.Empty;
+    private bool isSolving;
+    private string? errorMessage;
+    private SolutionResult? solution;
+
+    private async Task SolveEquation()
+    {
+        if (string.IsNullOrWhiteSpace(equationInput))
+        {
+            errorMessage = "Please enter an equation system.";
+            return;
+        }
+
+        isSolving = true;
+        errorMessage = null;
+        solution = null;
+
+        try
+        {
+            solution = await SolverClient.SolveAsync(equationInput);
+            
+            if (solution == null)
+            {
+                errorMessage = "No solution returned from the server.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to solve equation: {ex.Message}";
+        }
+        finally
+        {
+            isSolving = false;
+        }
+    }
+
+    private void Clear()
+    {
+        equationInput = string.Empty;
+        errorMessage = null;
+        solution = null;
+    }
+
+    private void LoadExample(string example)
+    {
+        equationInput = example;
+        errorMessage = null;
+        solution = null;
+    }
+}

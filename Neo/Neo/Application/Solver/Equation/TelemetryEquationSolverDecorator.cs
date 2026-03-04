@@ -37,7 +37,6 @@ public sealed class TelemetryEquationSolverDecorator(
     IEquationCache? cache = null,
     SolvingOptions? options = null) : EquationSolverDecorator(inner)
 {
-    private readonly IEquationSolver _inner = inner ?? throw new ArgumentNullException(nameof(inner));
     private readonly NeoTelemetryService _telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
     private readonly PerformanceMonitor _performanceMonitor = performanceMonitor ?? new PerformanceMonitor();
     private readonly IEquationCache _cache = cache ?? new NullEquationCache();

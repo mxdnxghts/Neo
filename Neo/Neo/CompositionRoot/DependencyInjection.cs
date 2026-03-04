@@ -45,6 +45,7 @@ public static class DependencyInjection
         // Domain objects are created by factories/services, not registered in DI
 
         // Infrastructure Layer - concrete implementations
+        services.AddMemoryCache();
         services.AddSingleton<IEquationParser, EquationParser>();
         services.AddSingleton<IMatrixConverter, MatrixConverter>();
         services.AddSingleton<IMatrixSolver, MatrixSolver>();
@@ -53,9 +54,7 @@ public static class DependencyInjection
         services.AddSingleton<PerformanceMonitor>();
 
         // Application Layer - orchestrators
-        services.AddMemoryCache();
         services.AddSingleton<IEquationSolver, EquationSolver>();
-        services.Decorate<IEquationSolver, TelemetryEquationSolverDecorator>();
 
         return services;
     }
@@ -117,6 +116,7 @@ public static class DependencyInjection
         });
 
         // Infrastructure Layer
+        services.AddMemoryCache();
         services.AddSingleton<IEquationParser, EquationParser>();
         services.AddSingleton<IMatrixConverter, MatrixConverter>();
         services.AddSingleton<IMatrixSolver, MatrixSolver>();
@@ -167,26 +167,29 @@ public static class DependencyInjection
         });
         
         // Register cache
+        services.AddMemoryCache();
         services.AddSingleton<IEquationCache, MemoryEquationCache>();
         
         // Register core solver
-        services.AddSingleton<IEquationSolver>(sp =>
-        {
-            var parser = sp.GetRequiredService<IEquationParser>();
-            var converter = sp.GetRequiredService<IMatrixConverter>();
-            var matrixSolver = sp.GetRequiredService<IMatrixSolver>();
-            var validator = sp.GetRequiredService<ISolutionValidator>();
-            var options = sp.GetRequiredService<SolvingOptions>();
+        services.AddSingleton<IEquationSolver, EquationSolver>();
+        services.Decorate<IEquationSolver, TelemetryEquationSolverDecorator>();
+        // services.AddSingleton<IEquationSolver>(sp =>
+        // {
+        //     var parser = sp.GetRequiredService<IEquationParser>();
+        //     var converter = sp.GetRequiredService<IMatrixConverter>();
+        //     var matrixSolver = sp.GetRequiredService<IMatrixSolver>();
+        //     var validator = sp.GetRequiredService<ISolutionValidator>();
+        //     var options = sp.GetRequiredService<SolvingOptions>();
             
-            // Create core solver WITHOUT cache - cache is handled by decorator
-            var coreSolver = new EquationSolver(parser, converter, matrixSolver, validator, new NullEquationCache(), options);
+        //     // Create core solver WITHOUT cache - cache is handled by decorator
+        //     var coreSolver = new EquationSolver(parser, converter, matrixSolver, validator, new NullEquationCache(), options);
             
-            // Wrap with telemetry decorator (which also handles caching)
-            var telemetry = sp.GetRequiredService<NeoTelemetryService>();
-            var perfMonitor = sp.GetRequiredService<PerformanceMonitor>();
-            var cache = sp.GetRequiredService<IEquationCache>();
-            return new TelemetryEquationSolverDecorator(coreSolver, telemetry, perfMonitor, cache, options);
-        });
+        //     // Wrap with telemetry decorator (which also handles caching)
+        //     var telemetry = sp.GetRequiredService<NeoTelemetryService>();
+        //     var perfMonitor = sp.GetRequiredService<PerformanceMonitor>();
+        //     var cache = sp.GetRequiredService<IEquationCache>();
+        //     return new TelemetryEquationSolverDecorator(coreSolver, telemetry, perfMonitor, cache, options);
+        // });
 
         return services;
     }

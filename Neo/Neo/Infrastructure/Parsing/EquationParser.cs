@@ -41,14 +41,13 @@ public sealed class EquationParser : IEquationParser
         try
         {
             // Tokenize – use stackalloc for small, fallback to ArrayPool for large
-            var tokenResult = TokenizeWithAdaptiveBuffer(span);
-            using (tokenResult)
-            {
-                var result = ParseTokens(tokenResult.Tokens, input.AsMemory());
-                stopwatch.Stop();
-                _performanceMonitor?.RecordOperation("Parse", stopwatch.Elapsed, result.IsSuccess);
-                return result;
-            }
+            using var tokenResult = TokenizeWithAdaptiveBuffer(span);
+            // add check on count of '=' sign and variables
+            // variablesCount should be equals equalsSignCount 
+            var result = ParseTokens(tokenResult.Tokens, input.AsMemory());
+            stopwatch.Stop();
+            _performanceMonitor?.RecordOperation("Parse", stopwatch.Elapsed, result.IsSuccess);
+            return result;
         }
         catch (Exception ex)
         {

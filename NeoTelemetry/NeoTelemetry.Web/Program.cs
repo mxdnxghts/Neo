@@ -1,6 +1,7 @@
 using NeoTelemetry.Web;
 using NeoTelemetry.Web.Components;
 using NeoTelemetry.Web.Services;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 

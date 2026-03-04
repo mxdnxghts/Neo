@@ -2,8 +2,38 @@ using Neo.Application.Solver.Equation;
 using Neo.Domain.Result;
 using Neo.Domain.Solution;
 using Neo.Infrastructure.Telemetry;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace NeoTelemetry.ApiService.Endpoints;
+
+/// <summary>
+/// DTO for equation solving response - JSON serializable.
+/// </summary>
+public record SolveResponseDto(
+    int VariableCount,
+    int EquationCount,
+    string Status,
+    Dictionary<string, double> Values,
+    string? AlgorithmUsed,
+    string? Message);
+
+/// <summary>
+/// DTO for batch solving response - JSON serializable.
+/// </summary>
+public record BatchSolveResponseDto(
+    List<BatchSolutionDto> Solutions);
+
+/// <summary>
+/// DTO for a single solution in batch response.
+/// </summary>
+public record BatchSolutionDto(
+    int VariableCount,
+    int EquationCount,
+    string Status,
+    Dictionary<string, double> Values,
+    string? AlgorithmUsed,
+    string? Message);
 
 /// <summary>
 /// Extension methods for mapping equation solver endpoints.
@@ -17,29 +47,41 @@ public static class EquationEndpoints
     public static void MapEquationEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/equations/solve", async (
-            SolveRequest request, 
+            SolveRequest request,
             IEquationSolver solver,
             NeoTelemetryService telemetry,
             CancellationToken ct) =>
         {
-            using var activity = telemetry.StartSolveActivity("API.SolveEquation", request.InputHash);
-            
             try
             {
-                var result = solver.Solve(request.Input);
-                
-                return result.IsSuccess 
-                    ? Results.Ok(new SolveResponse(result.Value))
-                    : Results.BadRequest(new { error = result.Error.ToString() });
+                var result = await solver.SolveAsync(request.Input, ct);
+
+                return result.IsSuccess
+                    ? Results.Ok(CreateSolveResponseDto(result.Value!))
+                    : Results.BadRequest(new { error = result.Error?.ToString() ?? "Unknown error" });
+            }
+            catch (OperationCanceledException)
+            {
+                return Results.Problem("Request was cancelled", statusCode: 499);
             }
             catch (Exception ex)
             {
-                telemetry.RecordError("API.SolveEquation", ex.GetType().Name, ex.Message);
-                return Results.Problem(ex.Message);
+                return Results.Problem(new ProblemDetails
+                {
+                    Status = StatusCodes.Status500InternalServerError,
+                    Title = "An error occurred while solving the equation",
+                    Detail = ex.Message,
+                    Type = "https://httpstatuses.com/500"
+                });
             }
         })
         .WithName("SolveEquation")
-        .WithOpenApi();
+        .AddOpenApiOperationTransformer((operation, context, ct) =>
+        {
+            // Per-endpoint tweaks
+            operation.Summary = "Solves system equations";
+            return Task.CompletedTask;
+        });
 
         app.MapGet("/api/equations/solve-batch", async (
             [AsParameters] BatchRequest request,
@@ -48,28 +90,78 @@ public static class EquationEndpoints
             CancellationToken ct) =>
         {
             using var activity = telemetry.StartSolveActivity("API.SolveEquationBatch");
-            
+
             try
             {
                 var inputs = request.Inputs?.Split(';', StringSplitOptions.RemoveEmptyEntries) ?? Array.Empty<string>();
                 var result = await solver.SolveBatchAsync(inputs, ct);
-                
-                return result.IsSuccess 
-                    ? Results.Ok(new BatchSolveResponse(result.Value))
-                    : Results.BadRequest(new { error = result.Error.ToString() });
+
+                return result.IsSuccess
+                    ? Results.Ok(CreateBatchSolveResponseDto(result.Value!))
+                    : Results.BadRequest(new { error = result.Error?.ToString() ?? "Unknown error" });
+            }
+            catch (OperationCanceledException)
+            {
+                return Results.Problem("Request was cancelled", statusCode: 499);
             }
             catch (Exception ex)
             {
                 telemetry.RecordError("API.SolveEquationBatch", ex.GetType().Name, ex.Message);
-                return Results.Problem(ex.Message);
+                return Results.Problem(new ProblemDetails
+                {
+                    Status = StatusCodes.Status500InternalServerError,
+                    Title = "An error occurred while solving the equations",
+                    Detail = ex.Message,
+                    Type = "https://httpstatuses.com/500"
+                });
             }
         })
         .WithName("SolveEquationBatch")
-        .WithOpenApi();
+        .AddOpenApiOperationTransformer((operation, context, ct) =>
+        {
+            // Per-endpoint tweaks
+            operation.Summary = "Solves systems equations";
+            return Task.CompletedTask;
+        });
 
         app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }))
             .WithName("HealthCheck")
-            .WithOpenApi();
+            .AddOpenApiOperationTransformer((operation, context, ct) =>
+            {
+                // Per-endpoint tweaks
+                operation.Summary     = "Checks health of the API";
+                return Task.CompletedTask;
+            });
+    }
+
+    /// <summary>
+    /// Creates a JSON-serializable DTO from a Solution.
+    /// </summary>
+    private static SolveResponseDto CreateSolveResponseDto(Solution solution)
+    {
+        return new SolveResponseDto(
+            VariableCount: solution.OriginalSystem.VariableCount,
+            EquationCount: solution.OriginalSystem.EquationCount,
+            Status: solution.Status.ToString(),
+            Values: solution.Values.ToDictionary(kv => kv.Key.Name, kv => kv.Value),
+            AlgorithmUsed: solution.AlgorithmUsed?.ToString(),
+            Message: solution.Message);
+    }
+
+    /// <summary>
+    /// Creates a JSON-serializable DTO from a collection of Solutions.
+    /// </summary>
+    private static BatchSolveResponseDto CreateBatchSolveResponseDto(IReadOnlyList<Solution> solutions)
+    {
+        var batchSolutions = solutions.Select(s => new BatchSolutionDto(
+            VariableCount: s.OriginalSystem.VariableCount,
+            EquationCount: s.OriginalSystem.EquationCount,
+            Status: s.Status.ToString(),
+            Values: s.Values.ToDictionary(kv => kv.Key.Name, kv => kv.Value),
+            AlgorithmUsed: s.AlgorithmUsed?.ToString(),
+            Message: s.Message)).ToList();
+
+        return new BatchSolveResponseDto(batchSolutions);
     }
 }
 
@@ -81,19 +173,7 @@ public static class EquationEndpoints
 public record SolveRequest(string Input, string? InputHash = null);
 
 /// <summary>
-/// Response containing the solution.
-/// </summary>
-/// <param name="Solution">The solution result.</param>
-public record SolveResponse(Solution Solution);
-
-/// <summary>
 /// Request to solve multiple equations.
 /// </summary>
 /// <param name="Inputs">Semicolon-separated equation inputs.</param>
 public record BatchRequest(string? Inputs);
-
-/// <summary>
-/// Response containing multiple solutions.
-/// </summary>
-/// <param name="Solutions">The list of solutions.</param>
-public record BatchSolveResponse(IReadOnlyList<Solution> Solutions);
