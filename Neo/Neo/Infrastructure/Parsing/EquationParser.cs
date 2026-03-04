@@ -42,6 +42,11 @@ public sealed class EquationParser : IEquationParser
         {
             // Tokenize – use stackalloc for small, fallback to ArrayPool for large
             using var tokenResult = TokenizeWithAdaptiveBuffer(span);
+            if (!IsValidEquationInput(tokenResult.Tokens))
+            {
+                return Result<EquationSystem>.Failure(
+                    new Error("Invalid equation input", "INVALID_INPUT"));
+            }
             // add check on count of '=' sign and variables
             // variablesCount should be equals equalsSignCount 
             var result = ParseTokens(tokenResult.Tokens, input.AsMemory());
@@ -56,6 +61,26 @@ public sealed class EquationParser : IEquationParser
             return Result<EquationSystem>.Failure(
                 new Error($"Parsing failed: {ex.Message}", "PARSE_ERROR", ex));
         }
+    }
+
+    private static bool IsValidEquationInput(ReadOnlySpan<TokenInfo> tokens)
+    {
+        var equalsSignCount = 0;
+        var separatorSignCount = 0;
+        
+        for (int i = 0; i < tokens.Length; i++)
+        {
+            if (tokens[i].Type == TokenType.Equals)
+            {
+                equalsSignCount++;
+            }
+            else if (tokens[i].Type == TokenType.Separator)
+            {
+                separatorSignCount++;
+            }
+        }
+
+        return equalsSignCount - 1 == separatorSignCount;
     }
 
     // ---------- Adaptive Tokenization ----------
