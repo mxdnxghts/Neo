@@ -1,6 +1,4 @@
-﻿using MathNet.Numerics.LinearAlgebra;
-
-namespace TestNeoSoftware.UITests;
+﻿namespace TestNeoSoftware.UITests;
 
 public class TestManualActivity
 {

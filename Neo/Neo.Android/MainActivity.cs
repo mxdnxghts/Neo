@@ -105,7 +105,7 @@ namespace Neo.Droid
         {
             try
             {
-                _output.Text = new Solver(_txtView.Text).ToString();
+                _output.Text = (await new Solver().SolveAsync(_txtView.Text)).ToString();
             }
             catch (Exception ex)
             {

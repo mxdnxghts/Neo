@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="NeoAndroidApp.MainPage">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Button
+            Text="Import File"
+            Clicked="ReadFileOnImport"
+            Grid.Row="0"
+            HorizontalOptions="Center"
+            Margin="20, 20, 20, 10"/>
+        <Button
+            Text="Matrix Builder"
+            Clicked="OnMatrixBuilderClicked"
+            Grid.Row="1"
+            HorizontalOptions="Center"
+            Margin="20, 0, 20, 10"
+            BackgroundColor="#007BFF"
+            TextColor="White"/>
+        <ScrollView
+            Grid.Row="2"
+            BackgroundColor="LightGray"
+            Padding="10"
+            Margin="10, 10, 10, 30">
+            <Label x:Name="OutputText"/>
+        </ScrollView>
+    </Grid>
+
+</ContentPage>
